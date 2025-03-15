@@ -8,10 +8,10 @@ WORKDIR /app
 COPY . /app
 
 # Install necessary dependencies
-RUN pip install -r requirements.txt
+RUN pip install -r ./requirements.txt
 
 # Run the model training script to train and save the model during the build
-RUN python train_hotspot.py
+RUN python ./train_hotspot.py
 
 # Expose port 5000 for the Flask app
 EXPOSE 5000
