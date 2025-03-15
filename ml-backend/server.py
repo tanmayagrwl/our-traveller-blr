@@ -104,7 +104,6 @@ async def async_coordinates_to_locations(
     Asynchronous version - Converts coordinates to include location names.
     """
     api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
-    result = []
     
     async def reverse_geocode(obj):
         if lat_key not in obj or lng_key not in obj:
@@ -185,11 +184,11 @@ async def async_coordinates_to_locations(
             logger.error(f"Error reverse geocoding coordinates ({lat}, {lng}): {str(e)}")
             return obj
     
-    # Process coordinates sequentially with delay to avoid rate limiting
-    for obj in coordinate_objects:
-        result.append(await reverse_geocode(obj))
-        await asyncio.sleep(0.2)  # Add delay between requests
+    # Create tasks for parallel execution
+    tasks = [reverse_geocode(obj) for obj in coordinate_objects]
     
+    # Execute all tasks concurrently and gather results
+    result = await asyncio.gather(*tasks)
     return result
 
 
@@ -226,7 +225,7 @@ async def async_get_traffic_hotspots_google(sample_points: int = 60) -> List[Dic
             geocode_data = await response.json()
 
             if geocode_data.get("status") != "OK" or not geocode_data.get("results"):
-                logger.error(f"Failed to geocode city: {city}, response: {geocode_data}")
+                logger.error(f"Failed to geocode city: {city}")
                 return []
 
             # Get city center coordinates
@@ -235,9 +234,7 @@ async def async_get_traffic_hotspots_google(sample_points: int = 60) -> List[Dic
             city_lng = location["lng"]
 
             # Create a grid of points around the city center
-            # Reduce the number of points to avoid rate limiting
-            adjusted_points = min(sample_points, 16)  # Limit to avoid rate limiting
-            grid_size = int(adjusted_points**0.5)  # square root to make a roughly square grid
+            grid_size = int(sample_points**0.5)  # square root to make a roughly square grid
             lat_span = 0.1  # approximately 11km
             lng_span = 0.1
 
@@ -250,45 +247,36 @@ async def async_get_traffic_hotspots_google(sample_points: int = 60) -> List[Dic
 
             # Split points into batches (API limit is 100)
             all_traffic_points = []
-            
-            # Reduce batch size and add delay between requests
-            batch_size = 10  # Smaller batch size
+            batch_size = 100
             
             async def process_batch(batch_points):
                 batch_results = []
                 paths = "|".join(batch_points)
                 roads_url = f"https://roads.googleapis.com/v1/snapToRoads?path={paths}&interpolate=true&key={api_key}"
                 
-                try:
-                    async with async_session.get(roads_url) as response:
-                        roads_data = await response.json()
+                async with async_session.get(roads_url) as response:
+                    roads_data = await response.json()
+                    
+                    if "snappedPoints" not in roads_data:
+                        return []
+                    
+                    # Create tasks for parallel processing of each point
+                    point_tasks = []
+                    for point in roads_data["snappedPoints"]:
+                        lat = point["location"]["latitude"]
+                        lng = point["location"]["longitude"]
+                        place_id = point.get("placeId")
                         
-                        if "snappedPoints" not in roads_data:
-                            logger.warning(f"No snappedPoints in response: {roads_data}")
-                            return []
-                        
-                        # Process only a subset of points to reduce API calls
-                        # Take every Nth point to reduce total API calls
-                        sampled_points = roads_data["snappedPoints"][::3]  # Take every 3rd point
-                        
-                        # Process points sequentially with delay to avoid rate limiting
-                        for point in sampled_points:
-                            lat = point["location"]["latitude"]
-                            lng = point["location"]["longitude"]
-                            place_id = point.get("placeId")
-                            
-                            # Get traffic data with rate limiting delay
-                            traffic_result = await get_point_traffic(lat, lng, place_id, api_key)
-                            if traffic_result:
-                                batch_results.append(traffic_result)
-                            
-                            # Add delay between requests to avoid rate limiting
-                            await asyncio.sleep(0.2)
-                        
-                    return batch_results
-                except Exception as e:
-                    logger.error(f"Error processing batch: {str(e)}")
-                    return []
+                        # Create a task to get traffic data for this point
+                        point_tasks.append(get_point_traffic(lat, lng, place_id, api_key))
+                    
+                    # Execute all point tasks in parallel
+                    point_results = await asyncio.gather(*point_tasks)
+                    
+                    # Filter out None results and add valid ones to batch results
+                    batch_results.extend([r for r in point_results if r is not None])
+                    
+                return batch_results
             
             async def get_point_traffic(lat, lng, place_id, api_key):
                 # Use the Distance Matrix API to get traffic info
@@ -298,21 +286,17 @@ async def async_get_traffic_hotspots_google(sample_points: int = 60) -> List[Dic
                     f"&departure_time=now&traffic_model=best_guess&key={api_key}"
                 )
                 
-                try:
-                    async with async_session.get(traffic_url) as response:
-                        traffic_data = await response.json()
+                async with async_session.get(traffic_url) as response:
+                    traffic_data = await response.json()
+                    
+                    if (
+                        traffic_data.get("status") == "OK"
+                        and traffic_data.get("rows")
+                        and traffic_data["rows"][0].get("elements")
+                    ):
+                        element = traffic_data["rows"][0]["elements"][0]
                         
-                        if traffic_data.get("status") != "OK":
-                            logger.warning(f"Traffic API returned non-OK status: {traffic_data.get('status')}")
-                            return None
-                        
-                        if (
-                            traffic_data.get("rows") and 
-                            traffic_data["rows"][0].get("elements") and
-                            traffic_data["rows"][0]["elements"][0].get("status") == "OK"
-                        ):
-                            element = traffic_data["rows"][0]["elements"][0]
-                            
+                        if element.get("status") == "OK":
                             # Calculate congestion by comparing duration in traffic vs. duration without traffic
                             duration = element.get("duration", {}).get("value", 0)
                             duration_in_traffic = element.get("duration_in_traffic", {}).get("value", 0)
@@ -330,23 +314,23 @@ async def async_get_traffic_hotspots_google(sample_points: int = 60) -> List[Dic
                                         "congestion_percent": round((congestion_factor - 1) * 100),
                                         "name": f"Traffic Hotspot ({round((congestion_factor - 1) * 100)}% delay)",
                                     }
-                except Exception as e:
-                    logger.error(f"Error getting traffic data: {str(e)}")
-                
                 return None
             
-            # Process batches sequentially with delay between batches
+            # Create batch processing tasks
+            batch_tasks = []
             for i in range(0, len(points), batch_size):
                 batch_points = points[i : i + batch_size]
-                batch_results = await process_batch(batch_points)
-                all_traffic_points.extend(batch_results)
-                
-                # Add delay between batches to avoid rate limiting
-                await asyncio.sleep(1)
+                batch_tasks.append(process_batch(batch_points))
             
-            # Add location information to traffic points (if there are any)
-            if all_traffic_points:
-                all_traffic_points = await async_coordinates_to_locations(all_traffic_points)
+            # Execute batches with some concurrency control (5 batches at a time)
+            for i in range(0, len(batch_tasks), 5):
+                batch_group = batch_tasks[i:i+5]
+                batch_results = await asyncio.gather(*batch_group)
+                for results in batch_results:
+                    all_traffic_points.extend(results)
+            
+            # Add location information to traffic points
+            all_traffic_points = await async_coordinates_to_locations(all_traffic_points)
             
             # Sort by congestion factor and return
             return sorted(
@@ -357,7 +341,6 @@ async def async_get_traffic_hotspots_google(sample_points: int = 60) -> List[Dic
 
     except Exception as e:
         logger.error(f"Error fetching traffic data: {e}")
-        traceback.print_exc()
         return []
 
 
