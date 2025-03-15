@@ -37,7 +37,6 @@ export default function DriverDashboard() {
 				const response = await fetch('http://localhost:5050/api/driver/dashboard', {
 					method: 'GET',
 					headers: {'Content-Type': 'application/json'},
-					credentials: 'include'
 				})
 
 				if (!response.ok) {
