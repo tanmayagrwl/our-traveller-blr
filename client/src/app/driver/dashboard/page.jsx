@@ -4,12 +4,56 @@ import { useState, useEffect } from 'react'
 import Navbar from '@/components/ui/Navbar'
 import RideMap from '@/components/maps/RideMap'
 import { motion } from 'framer-motion'
-import { DriverDashboard as dashboardData } from '@/utils/response/driver/dashboard'
+
+
+
+
 
 export default function DriverDashboard() {
-    const [driverData, setDriverData] = useState(dashboardData)
+    const [driverData, setDriverData] = useState("")
     const [isAvailable, setIsAvailable] = useState(true)
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState(null)
 
+  
+    
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                setIsLoading(true)
+                const response = await fetch('http://localhost:5050/api/driver/dashboard', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Add auth headers if required
+                        // 'Authorization': `Bearer ${token}`
+                    },
+                    credentials: 'include', // Include cookies if needed
+                })
+
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`)
+                }
+
+                const data = await response.json()
+                setDriverData(data)
+                setError(null)
+            } catch (err) {
+                console.error('Failed to fetch driver dashboard data:', err)
+                setError('Failed to load dashboard data. Using fallback data.')
+                // Keep using fallback data
+            } finally {
+                setIsLoading(false)
+            }
+        }
+
+        fetchDashboardData()
+
+        // Set up polling interval to refresh data
+        const intervalId = setInterval(fetchDashboardData, 30000) // Refresh every 30 seconds
+
+        return () => clearInterval(intervalId)
+    }, [])
 
 
 
