@@ -33,7 +33,9 @@ export default function Navbar() {
 		{ href: '/user/dashboard', label: 'Dashboard' },
 		{ href: '/user/booking', label: 'Book a Ride' },
 		{ href: '/user/carpooling', label: 'Carpooling' },
-		{ href: '/user/shuttle', label: 'Shuttle Service' }
+		{ href: '/user/shuttle', label: 'Shuttle Service' },
+		{ href: '/user/rewards', label: 'Rewards' },
+
 	]
 	
 	const navLinks = isDriver ? driverLinks : userLinks
