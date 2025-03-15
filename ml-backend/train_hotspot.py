@@ -19,7 +19,7 @@ def train_and_save_model():
     try:
         # Define file paths
         excel_path = "./namma_yatri_data.xlsx"
-        model_path = "./namma_yatri_location_model1.pkl"
+        model_path = "./namma_yatri_location_model.pkl"
 
         # Check if Excel file exists
         if not os.path.exists(excel_path):
