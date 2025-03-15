@@ -57,7 +57,7 @@ export const DriverDashboard = {
         { name: "Weekend Warrior", type: "secondary" },
         { name: "5-Star Driver", type: "accent" }
       ],
-      achievements: [
+      achievements: [ 
         { name: "100 Rides Completed", date: "2024-12-10" },
         { name: "50 Five-Star Ratings", date: "2025-01-22" }
       ]
