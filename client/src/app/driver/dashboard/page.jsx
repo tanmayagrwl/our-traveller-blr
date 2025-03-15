@@ -10,83 +10,85 @@ import { motion } from 'framer-motion'
 
 
 export default function DriverDashboard() {
-    const [driverData, setDriverData] = useState("")
-    const [isAvailable, setIsAvailable] = useState(true)
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState(null)
+	const [driverData, setDriverData] = useState({
+		location: {
+			current: {lat: 0, lng: 0}
+		},
+		activeRides: [],
+		stats: {
+			daily: {earnings: 0, completedRides: 0, declinedRides: 0, comparedToYesterday: 0}
+		},
+		rewards: {
+			points: 0,
+			level: '',
+			pointsToNextLevel: 0,
+			nextLevel: '',
+			badges: []
+		}
+	})
+	const [isAvailable, setIsAvailable] = useState(true)
+	const [isLoading, setIsLoading] = useState(false)
+	const [error, setError] = useState(null)
 
-  
-    
-    useEffect(() => {
-        const fetchDashboardData = async () => {
-            try {
-                setIsLoading(true)
-                const response = await fetch('http://localhost:5050/api/driver/dashboard', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // Add auth headers if required
-                        // 'Authorization': `Bearer ${token}`
-                    },
-                    credentials: 'include', // Include cookies if needed
-                })
+	useEffect(() => {
+		const fetchDashboardData = async () => {
+			try {
+				setIsLoading(true)
+				const response = await fetch('http://localhost:5050/api/driver/dashboard', {
+					method: 'GET',
+					headers: {'Content-Type': 'application/json'},
+					credentials: 'include'
+				})
 
-                if (!response.ok) {
-                    throw new Error(`API request failed with status ${response.status}`)
-                }
+				if (!response.ok) {
+					throw new Error(`API request failed with status ${response.status}`)
+				}
 
-                const data = await response.json()
-                setDriverData(data)
-                setError(null)
-            } catch (err) {
-                console.error('Failed to fetch driver dashboard data:', err)
-                setError('Failed to load dashboard data. Using fallback data.')
-                // Keep using fallback data
-            } finally {
-                setIsLoading(false)
-            }
-        }
+				const data = await response.json()
+				setDriverData(data)
+				setError(null)
+			} catch (err) {
+				console.error('Failed to fetch driver dashboard data:', err)
+				setError('Failed to load dashboard data. Using fallback data.')
+			} finally {
+				setIsLoading(false)
+			}
+		}
 
-        fetchDashboardData()
+		fetchDashboardData()
+		const intervalId = setInterval(fetchDashboardData, 30000)
+		return () => clearInterval(intervalId)
+	}, [])
 
-        // Set up polling interval to refresh data
-        const intervalId = setInterval(fetchDashboardData, 30000) // Refresh every 30 seconds
-
-        return () => clearInterval(intervalId)
-    }, [])
-
-
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (isAvailable && Math.random() > 0.7) {
-                const newRide = {
-                    id: Math.floor(Math.random() * 1000),
-                    pickupLocation: {
-                        lat: driverData.location.current.lat + (Math.random() * 0.02 - 0.01),
-                        lng: driverData.location.current.lng + (Math.random() * 0.02 - 0.01)
-                    },
-                    dropLocation: {
-                        lat: driverData.location.current.lat + (Math.random() * 0.05 - 0.025),
-                        lng: driverData.location.current.lng + (Math.random() * 0.05 - 0.025)
-                    },
-                    estimatedFare: Math.floor(Math.random() * 200) + 100,
-                    estimatedDistance: Math.floor(Math.random() * 8) + 2,
-                    estimatedTime: Math.floor(Math.random() * 30) + 10,
-                    passengerRating: (Math.random() * 2 + 3).toFixed(1),
-                    passengerName: `Passenger ${Math.floor(Math.random() * 100)}`,
-                    timestamp: new Date().toISOString(),
-                    rewardPoints: 20
-                }
-                setDriverData(prev => ({
-                    ...prev,
-                    activeRides: [...prev.activeRides, newRide]
-                }))
-            }
-        }, 15000)
-
-        return () => clearInterval(interval)
-    }, [isAvailable, driverData.location.current])
+	useEffect(() => {
+		const interval = setInterval(() => {
+			if (isAvailable && Math.random() > 0.7) {
+				const newRide = {
+					id: Math.floor(Math.random() * 1000),
+					pickupLocation: {
+						lat: driverData.location.current.lat + (Math.random() * 0.02 - 0.01),
+						lng: driverData.location.current.lng + (Math.random() * 0.02 - 0.01)
+					},
+					dropLocation: {
+						lat: driverData.location.current.lat + (Math.random() * 0.05 - 0.025),
+						lng: driverData.location.current.lng + (Math.random() * 0.05 - 0.025)
+					},
+					estimatedFare: Math.floor(Math.random() * 200) + 100,
+					estimatedDistance: Math.floor(Math.random() * 8) + 2,
+					estimatedTime: Math.floor(Math.random() * 30) + 10,
+					passengerRating: (Math.random() * 2 + 3).toFixed(1),
+					passengerName: `Passenger ${Math.floor(Math.random() * 100)}`,
+					timestamp: new Date().toISOString(),
+					rewardPoints: 20
+				}
+				setDriverData(prev => ({
+					...prev,
+					activeRides: [...prev.activeRides, newRide]
+				}))
+			}
+		}, 15000)
+		return () => clearInterval(interval)
+	}, [isAvailable, driverData.location.current])
 
     const acceptRide = (rideId) => {
         setDriverData(prev => ({
