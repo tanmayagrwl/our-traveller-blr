@@ -4,28 +4,13 @@ import { useState, useEffect } from 'react'
 import Navbar from '@/components/ui/Navbar'
 import RideMap from '@/components/maps/RideMap'
 import { motion } from 'framer-motion'
-
+import { DriverDashboard as driverdata} from '@/utils/response/driver/dashboard'
 
 
 
 
 export default function DriverDashboard() {
-	const [driverData, setDriverData] = useState({
-		location: {
-			current: {lat: 0, lng: 0}
-		},
-		activeRides: [],
-		stats: {
-			daily: {earnings: 0, completedRides: 0, declinedRides: 0, comparedToYesterday: 0}
-		},
-		rewards: {
-			points: 0,
-			level: '',
-			pointsToNextLevel: 0,
-			nextLevel: '',
-			badges: []
-		}
-	})
+    const [driverData, setDriverData] = useState(driverdata)
 	const [isAvailable, setIsAvailable] = useState(true)
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState(null)
