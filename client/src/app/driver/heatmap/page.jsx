@@ -5,6 +5,19 @@ import Navbar from '@/components/ui/Navbar'
 import HeatMap from '@/components/maps/HeatMap'
 import { motion } from 'framer-motion'
 
+function getHourFromTime(time = 'morning') {
+    switch (time) {
+        case 'morning':
+            return '08:00'
+        case 'afternoon':
+            return '13:00'
+        case 'evening':
+            return '17:00'
+        default:
+            return '08:00'
+    }
+}
+
 export default function DriverHeatmap() {
 	const [timeOfDay, setTimeOfDay] = useState('morning')
 	const [recommendations, setRecommendations] = useState({
@@ -22,35 +35,13 @@ export default function DriverHeatmap() {
 		const fetchData = async () => {
 			try {
 				setIsLoading(true)
-				// const response = await fetch('https://66qj4qkb-5001.inc1.devtunnels.ms/api/get-recommendations?time=19:00')
+				const response = await fetch(`http://localhost:5000/api/get-recommendations?time=${getHourFromTime(timeOfDay)}`)
 				
-				// if (!response.ok) {
-				// 	throw new Error('Failed to fetch heatmap data')
-				// }
+				if (!response.ok) {
+					throw new Error('Failed to fetch heatmap data')
+				}
 				
-				// const data = await response.json()
-                const data = {
-                    "block_recommendations": [
-                      "Hebbal",
-                      "B. T. M. Layout",
-                      "Bangalore South",
-                      "Ramanagaram",
-                      "Govindraj Nagar"
-                    ],
-                    "hour": 19,
-                    "hourly_recommendations": [
-                      "Hoskote",
-                      "Padmanabhanagar",
-                      "Hebbal",
-                      "Sarvagnanagar",
-                      "Basavanagudi"
-                    ],
-                    "status": "success",
-                    "time_block": "evening",
-                    "time_input": "19:00",
-                    "time_of_day": "19-20",
-                    "top_recommendation": "Hoskote"
-                  }
+				const data = await response.json()
 				setRecommendations(data)
 				setError(null)
 			} catch (err) {
