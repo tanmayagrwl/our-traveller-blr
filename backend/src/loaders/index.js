@@ -1,7 +1,7 @@
 const config = require('../config');
 const database = require('./database');
 const express = require('./express');
-const Logger = require('./Logger');
+const Logger = require('./logger');
 
 module.exports = async ({ expressApp }) => {
   await database();
