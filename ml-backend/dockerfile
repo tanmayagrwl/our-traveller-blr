@@ -16,5 +16,8 @@ RUN python ./train_hotspot.py
 # Expose port 5000 for the Flask app
 EXPOSE 5000
 
+# Set environment variable placeholder that will be filled at runtime
+ENV GOOGLE_MAPS_API_KEY=""
+
 # Command to run the Flask app when the container starts
 CMD ["python", "server.py"]

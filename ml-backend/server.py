@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
+from typing import List, Dict, Any
+import requests
 import os
 import argparse
 import logging
+import time
 
 # Import functions from the provided script
 from namma_yatri_recommender import (
@@ -15,7 +18,7 @@ from namma_yatri_recommender import (
     save_model,
     load_model,
 )
-
+from geocode_utils import coordinates_to_locations, locations_to_coordinates
 # Set up logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -150,7 +153,6 @@ def api_get_recommendations():
                 ),
                 400,
             )
-            
 
         # Get time parameter
         time_input = request.args.get("time", None)
@@ -164,7 +166,7 @@ def api_get_recommendations():
             model_data["duration_map"],
             top_n,
         )
-
+        locations_to_coordinates(recommendations["hourly_recommendations"])
         # Format response
         response = {
             "status": "success",
@@ -172,9 +174,10 @@ def api_get_recommendations():
             "hour": recommendations["hour"],
             "time_of_day": recommendations["time_of_day"],
             "time_block": recommendations["time_block"],
-            "hourly_recommendations": recommendations["hourly_recommendations"],
-            "block_recommendations": recommendations["block_recommendations"],
-            "top_recommendation": recommendations["top_recommendation"],
+            "hourly_recommendations": locations_to_coordinates(recommendations["hourly_recommendations"]),
+            "block_recommendations": locations_to_coordinates(recommendations["block_recommendations"]),
+            "top_recommendation": locations_to_coordinates([recommendations["top_recommendation"]]),
+            "live_traffic_hotspots": get_traffic_hotspots_google(),
         }
 
         return jsonify(response)
@@ -221,6 +224,131 @@ def api_get_locations():
     except Exception as e:
         logger.error(f"Error getting locations: {str(e)}")
         return jsonify({"status": "error", "message": f"Error: {str(e)}"}), 500
+
+
+@app.route("/api/traffic-hotspots", methods=["GET"])
+def get_traffic_hotspots_google(sample_points: int = 60) -> List[Dict[str, Any]]:
+    """
+    Gets ACTUAL traffic data using Google Maps Roads API with traffic model.
+    This provides true traffic congestion data, not just popular places.
+
+    Args:
+        sample_points: Number of geographic points to sample
+
+    Returns:
+        List of high traffic areas with coordinates and congestion information
+    """
+    # First, get the geocode (center coordinates) of the city
+    
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    city = "Bangalore"
+    geocode_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={city}&key={api_key}"
+
+    try:
+        geocode_response = requests.get(geocode_url)
+        geocode_data = geocode_response.json()
+
+        if geocode_data.get("status") != "OK" or not geocode_data.get("results"):
+            print(f"Failed to geocode city: {city}")
+            return []
+
+        # Get city center coordinates
+        location = geocode_data["results"][0]["geometry"]["location"]
+        city_lat = location["lat"]
+        city_lng = location["lng"]
+
+        # Create a grid of points around the city center (simplified approach)
+        # For a more sophisticated approach, you could use city boundaries
+        grid_size = int(sample_points**0.5)  # square root to make a roughly square grid
+        lat_span = 0.1  # approximately 11km
+        lng_span = 0.1
+
+        points = []
+        for i in range(grid_size):
+            for j in range(grid_size):
+                lat = city_lat + (i - grid_size / 2) * lat_span / grid_size
+                lng = city_lng + (j - grid_size / 2) * lng_span / grid_size
+                points.append(f"{lat},{lng}")
+
+        # Use the Roads API with snapToRoads to get the nearest roads
+        # We'll batch these in groups of 100 (API limit)
+        all_traffic_points = []
+        batch_size = 100
+
+        for i in range(0, len(points), batch_size):
+            batch_points = points[i : i + batch_size]
+            paths = "|".join(batch_points)
+            roads_url = f"https://roads.googleapis.com/v1/snapToRoads?path={paths}&interpolate=true&key={api_key}"
+
+            roads_response = requests.get(roads_url)
+            roads_data = roads_response.json()
+
+            if "snappedPoints" in roads_data:
+                # For each road point, get the current traffic
+                for point in roads_data["snappedPoints"]:
+                    lat = point["location"]["latitude"]
+                    lng = point["location"]["longitude"]
+                    place_id = point.get("placeId")
+
+                    # Use the Distance Matrix API with traffic_model to get traffic info
+                    # We'll use the point as both origin and destination with a slight offset
+                    # This gives us traffic data for that specific road segment
+                    traffic_url = (
+                        f"https://maps.googleapis.com/maps/api/distancematrix/json?"
+                        f"origins={lat},{lng}&destinations={lat+0.001},{lng+0.001}"
+                        f"&departure_time=now&traffic_model=best_guess&key={api_key}"
+                    )
+
+                    traffic_response = requests.get(traffic_url)
+                    traffic_data = traffic_response.json()
+
+                    if (
+                        traffic_data.get("status") == "OK"
+                        and traffic_data.get("rows")
+                        and traffic_data["rows"][0].get("elements")
+                    ):
+
+                        element = traffic_data["rows"][0]["elements"][0]
+
+                        if element.get("status") == "OK":
+                            # Calculate congestion by comparing duration in traffic vs. duration without traffic
+                            duration = element.get("duration", {}).get("value", 0)
+                            duration_in_traffic = element.get(
+                                "duration_in_traffic", {}
+                            ).get("value", 0)
+
+                            if duration > 0 and duration_in_traffic > 0:
+                                congestion_factor = duration_in_traffic / duration
+
+                                # Only add points with significant congestion
+                                if congestion_factor > 1.3:  # 50% longer with traffic
+                                    all_traffic_points.append(
+                                        {
+                                            "lat": lat,
+                                            "lng": lng,
+                                            "place_id": place_id,
+                                            "congestion_factor": congestion_factor,
+                                            "congestion_percent": round(
+                                                (congestion_factor - 1) * 100
+                                            ),
+                                            "name": f"Traffic Hotspot ({round((congestion_factor - 1) * 100)}% delay)",
+                                        }
+                                    )
+
+            # Respect rate limits
+            time.sleep(1)
+
+        # Sort by congestion factor and return the highest traffic areas
+        all_traffic_points = coordinates_to_locations(all_traffic_points)
+        return sorted(
+            all_traffic_points,
+            key=lambda x: x.get("congestion_factor", 0),
+            reverse=True,
+        )
+
+    except Exception as e:
+        print(f"Error fetching traffic data: {e}")
+        return []
 
 
 @app.route("/api/time-blocks", methods=["GET"])
