@@ -300,7 +300,7 @@ export default function UserBooking() {
 										<div className="flex items-center gap-4 mb-4">
 											<div className="avatar">
 												<div className="w-16 rounded-full">
-													<img src="https://daisyui.com/images/stock/photo-1534528741775-53994a69daeb.jpg" />
+													<img src="https://plus.unsplash.com/premium_photo-1739786996022-5ed5b56834e2?q=80&w=2080&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" />
 												</div>
 											</div>
 											<div>
