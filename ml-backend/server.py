@@ -7,6 +7,7 @@ import argparse
 import logging
 import asyncio
 import aiohttp
+import math
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -448,6 +449,582 @@ def api_get_recommendations():
         logger.error(f"Error getting recommendations: {str(e)}", exc_info=True)
         return jsonify({"status": "error", "message": f"Error: {str(e)}"}), 500
 
+async def async_find_parking_near_hotspots(
+    hotspots: list,
+    radius: int = 300,
+    max_results: int = 3
+) -> list:
+    """
+    Find parking locations near traffic hotspots.
+    
+    Args:
+        hotspots: List of dict objects containing at least 'lat' and 'lng' keys
+        radius: Search radius in meters around the hotspot (default: 300m)
+        max_results: Maximum number of parking spots to return per hotspot (default: 3)
+        
+    Returns:
+        List of potential parking locations with coordinates and metadata
+    """
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    all_parking_locations = []
+    
+    async def find_parking_for_hotspot(hotspot):
+        """Find parking near a specific hotspot"""
+        try:
+            # Get hotspot coordinates
+            lat = hotspot["lat"]
+            lng = hotspot["lng"]
+            hotspot_name = hotspot.get("location", "Unknown location")
+            
+            # Search for parking lots, garages, or street parking near the hotspot
+            nearby_url = (
+                f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?"
+                f"location={lat},{lng}&radius={radius}"
+                f"&type=parking&keyword=parking|garage|lot"
+                f"&key={api_key}"
+            )
+            
+            async with async_session.get(nearby_url) as response:
+                nearby_data = await response.json()
+                
+                if nearby_data.get("status") != "OK":
+                    logger.warning(f"Failed to find parking near {hotspot_name}: {nearby_data.get('status')}")
+                    return []
+                
+                parking_spots = []
+                
+                # Process each parking result
+                for place in nearby_data.get("results", [])[:max_results]:
+                    # Calculate distance from hotspot to parking
+                    place_lat = place["geometry"]["location"]["lat"]
+                    place_lng = place["geometry"]["location"]["lng"]
+                    
+                    # Use Haversine formula to calculate ground distance
+                    distance = calculate_distance(lat, lng, place_lat, place_lng)
+                    
+                    # Determine if this is at the edge of the hotspot (we want outside/edge locations)
+                    # Edge is defined as 200-300m from center for this implementation
+                    is_edge = 200 <= distance <= radius
+                    
+                    parking_spot = {
+                        "lat": place_lat,
+                        "lng": place_lng,
+                        "name": place.get("name", "Parking Area"),
+                        "vicinity": place.get("vicinity", ""),
+                        "place_id": place.get("place_id", ""),
+                        "rating": place.get("rating", 0),
+                        "user_ratings_total": place.get("user_ratings_total", 0),
+                        "distance_from_hotspot": round(distance),
+                        "is_edge_location": is_edge,
+                        "nearby_hotspot": {
+                            "name": hotspot_name,
+                            "lat": lat,
+                            "lng": lng
+                        }
+                    }
+                    
+                    # Add additional data if available
+                    if "opening_hours" in place:
+                        parking_spot["open_now"] = place["opening_hours"].get("open_now", False)
+                    
+                    parking_spots.append(parking_spot)
+                
+                # If no parking spots found, try alternative approach with different search terms
+                if not parking_spots:
+                    alternative_url = (
+                        f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?"
+                        f"location={lat},{lng}&radius={radius}"
+                        f"&keyword=parking"
+                        f"&key={api_key}"
+                    )
+                    
+                    async with async_session.get(alternative_url) as alt_response:
+                        alt_data = await alt_response.json()
+                        
+                        if alt_data.get("status") == "OK":
+                            for place in alt_data.get("results", [])[:max_results]:
+                                place_lat = place["geometry"]["location"]["lat"]
+                                place_lng = place["geometry"]["location"]["lng"]
+                                distance = calculate_distance(lat, lng, place_lat, place_lng)
+                                is_edge = 200 <= distance <= radius
+                                
+                                parking_spot = {
+                                    "lat": place_lat,
+                                    "lng": place_lng,
+                                    "name": place.get("name", "Parking Area"),
+                                    "vicinity": place.get("vicinity", ""),
+                                    "place_id": place.get("place_id", ""),
+                                    "distance_from_hotspot": round(distance),
+                                    "is_edge_location": is_edge,
+                                    "nearby_hotspot": {
+                                        "name": hotspot_name,
+                                        "lat": lat,
+                                        "lng": lng
+                                    }
+                                }
+                                parking_spots.append(parking_spot)
+                
+                return parking_spots
+                
+        except Exception as e:
+            logger.error(f"Error finding parking near {hotspot.get('location', 'unknown')}: {str(e)}")
+            return []
+    
+    # Process all hotspots in parallel
+    tasks = [find_parking_for_hotspot(hotspot) for hotspot in hotspots]
+    results = await asyncio.gather(*tasks)
+    
+    # Flatten results and filter out duplicates based on place_id
+    seen_place_ids = set()
+    for hotspot_results in results:
+        for spot in hotspot_results:
+            place_id = spot.get("place_id")
+            if place_id and place_id not in seen_place_ids:
+                seen_place_ids.add(place_id)
+                all_parking_locations.append(spot)
+    
+    # Sort by edge location and distance
+    all_parking_locations.sort(key=lambda x: (not x.get("is_edge_location"), x.get("distance_from_hotspot", 1000)))
+    
+    return all_parking_locations
+
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """
+    Calculate the Haversine distance between two points in meters.
+    """
+    # Earth's radius in meters
+    R = 6371000
+    
+    # Convert latitude and longitude from degrees to radians
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    lon1_rad = math.radians(lon1)
+    lon2_rad = math.radians(lon2)
+    
+    # Differences in coordinates
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    
+    # Haversine formula
+    a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    distance = R * c
+    
+    return distance
+
+
+async def async_find_alternative_parking_areas(
+    lat: float,
+    lng: float,
+    radius: int = 500
+) -> list:
+    """
+    Find alternative parking areas when no official parking is available.
+    This looks for businesses or locations that typically have parking lots.
+    
+    Args:
+        lat: Latitude of hotspot
+        lng: Longitude of hotspot
+        radius: Search radius in meters
+        
+    Returns:
+        List of potential unofficial parking locations
+    """
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    
+    # Types of places that typically have parking lots
+    place_types = [
+        "shopping_mall", "supermarket", "grocery_or_supermarket", 
+        "department_store", "store", "gas_station"
+    ]
+    
+    all_places = []
+    
+    async def search_places(place_type):
+        try:
+            nearby_url = (
+                f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?"
+                f"location={lat},{lng}&radius={radius}"
+                f"&type={place_type}"
+                f"&key={api_key}"
+            )
+            
+            async with async_session.get(nearby_url) as response:
+                nearby_data = await response.json()
+                
+                if nearby_data.get("status") != "OK":
+                    return []
+                
+                places = []
+                for place in nearby_data.get("results", []):
+                    place_lat = place["geometry"]["location"]["lat"]
+                    place_lng = place["geometry"]["location"]["lng"]
+                    
+                    # Calculate distance from hotspot
+                    distance = calculate_distance(lat, lng, place_lat, place_lng)
+                    
+                    # We want places that are not too close but still within walking distance
+                    if 200 <= distance <= radius:
+                        places.append({
+                            "lat": place_lat,
+                            "lng": place_lng,
+                            "name": place.get("name", "Unknown"),
+                            "vicinity": place.get("vicinity", ""),
+                            "place_id": place.get("place_id", ""),
+                            "type": place_type,
+                            "distance_from_hotspot": round(distance),
+                            "likely_has_parking": True,
+                            "is_unofficial": True
+                        })
+                
+                return places
+        
+        except Exception as e:
+            logger.error(f"Error searching for {place_type} near ({lat}, {lng}): {str(e)}")
+            return []
+    
+    # Search for all place types in parallel
+    tasks = [search_places(place_type) for place_type in place_types]
+    results = await asyncio.gather(*tasks)
+    
+    # Flatten and filter results
+    seen_place_ids = set()
+    for type_results in results:
+        for place in type_results:
+            place_id = place.get("place_id")
+            if place_id and place_id not in seen_place_ids:
+                seen_place_ids.add(place_id)
+                all_places.append(place)
+    
+    # Sort by distance
+    all_places.sort(key=lambda x: x.get("distance_from_hotspot", 1000))
+    
+    return all_places
+
+
+@app.route("/api/find-parking", methods=["GET"])
+def find_parking_spots_api():
+    """
+    API endpoint to find parking spots near hotspots or specific locations.
+    
+    Query parameters:
+    - lat: Latitude (optional)
+    - lng: Longitude (optional)
+    - location: Location name (optional, used if lat/lng not provided)
+    - radius: Search radius in meters (default: 300)
+    - max_results: Maximum number of parking spots to return per hotspot (default: 3)
+    """
+    try:
+        # Get parameters
+        lat = request.args.get("lat")
+        lng = request.args.get("lng")
+        location = request.args.get("location")
+        radius = int(request.args.get("radius", 300))
+        max_results = int(request.args.get("max_results", 3))
+        
+        # Initialize with empty list
+        hotspots = []
+        
+        # Case 1: Use provided lat/lng
+        if lat and lng:
+            hotspots = [{
+                "lat": float(lat),
+                "lng": float(lng),
+                "location": location or "Specified location"
+            }]
+        
+        # Case 2: Use provided location name
+        elif location:
+            # Convert location to coordinates
+            location_coords = run_in_thread(
+                async_locations_to_coordinates, [location]
+            )
+            if location_coords and "lat" in location_coords[0] and "lng" in location_coords[0]:
+                hotspots = location_coords
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Could not geocode location: {location}"
+                }), 400
+        
+        # Case 3: Use traffic hotspots
+        else:
+            # Get traffic hotspots
+            traffic_hotspots = run_in_thread(async_get_traffic_hotspots_google)
+            
+            # Use top recommendations if no traffic hotspots
+            if not traffic_hotspots:
+                # Get recommendations using the default model
+                if model_data:
+                    recommendations = get_recommended_locations(
+                        None,  # Use current time
+                        model_data["top_locations_by_hour"],
+                        model_data["time_block_locations"],
+                        model_data["duration_map"],
+                        5  # Get top 5
+                    )
+                    
+                    # Convert locations to coordinates
+                    hourly_with_coords = run_in_thread(
+                        async_locations_to_coordinates, 
+                        recommendations["hourly_recommendations"]
+                    )
+                    block_with_coords = run_in_thread(
+                        async_locations_to_coordinates,
+                        recommendations["block_recommendations"]
+                    )
+                    
+                    # Combine all recommendations
+                    hotspots = hourly_with_coords + block_with_coords
+                else:
+                    return jsonify({
+                        "status": "error",
+                        "message": "No hotspots available and model not loaded"
+                    }), 400
+            else:
+                hotspots = traffic_hotspots
+        
+        # Find parking spots near all hotspots
+        parking_spots = run_in_thread(
+            async_find_parking_near_hotspots,
+            hotspots,
+            radius,
+            max_results
+        )
+        
+        # If not enough parking spots found, look for alternative places that might have parking
+        if len(parking_spots) < 3 and hotspots:
+            # For each hotspot, find alternative parking areas
+            for hotspot in hotspots[:3]:  # Limit to top 3 hotspots to avoid too many API calls
+                alternative_spots = run_in_thread(
+                    async_find_alternative_parking_areas,
+                    hotspot["lat"],
+                    hotspot["lng"],
+                    radius + 200  # Slightly larger radius for alternatives
+                )
+                
+                # Add alternative spots to results
+                for spot in alternative_spots:
+                    # Add nearby hotspot information
+                    spot["nearby_hotspot"] = {
+                        "name": hotspot.get("location", "Unknown location"),
+                        "lat": hotspot["lat"],
+                        "lng": hotspot["lng"]
+                    }
+                    parking_spots.append(spot)
+        
+        # Add walking directions for each parking spot
+        enhanced_spots = run_in_thread(
+            async_add_walking_directions,
+            parking_spots
+        )
+        
+        # Return results
+        return jsonify({
+            "status": "success",
+            "parking_spots": enhanced_spots,
+            "hotspots": hotspots
+        })
+    
+    except Exception as e:
+        logger.error(f"Error finding parking spots: {str(e)}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": f"Error: {str(e)}"
+        }), 500
+
+
+async def async_add_walking_directions(parking_spots: list) -> list:
+    """
+    Add walking directions from parking spots to their corresponding hotspots.
+    
+    Args:
+        parking_spots: List of parking spot objects with nearby_hotspot information
+        
+    Returns:
+        Enhanced list of parking spots with walking directions
+    """
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    enhanced_spots = []
+    
+    async def add_directions(spot):
+        try:
+            # Skip if no nearby hotspot information
+            if "nearby_hotspot" not in spot:
+                return spot
+            
+            # Get coordinates
+            origin_lat = spot["lat"]
+            origin_lng = spot["lng"]
+            dest_lat = spot["nearby_hotspot"]["lat"]
+            dest_lng = spot["nearby_hotspot"]["lng"]
+            
+            # Get walking directions
+            directions_url = (
+                f"https://maps.googleapis.com/maps/api/directions/json?"
+                f"origin={origin_lat},{origin_lng}&destination={dest_lat},{dest_lng}"
+                f"&mode=walking&key={api_key}"
+            )
+            
+            async with async_session.get(directions_url) as response:
+                directions_data = await response.json()
+                
+                if directions_data.get("status") != "OK":
+                    return spot
+                
+                # Extract useful information
+                route = directions_data["routes"][0]
+                leg = route["legs"][0]
+                
+                # Create a copy of the spot with additional information
+                enhanced_spot = spot.copy()
+                enhanced_spot["walking_info"] = {
+                    "distance": leg.get("distance", {}).get("text", "Unknown"),
+                    "distance_meters": leg.get("distance", {}).get("value", 0),
+                    "duration": leg.get("duration", {}).get("text", "Unknown"),
+                    "duration_seconds": leg.get("duration", {}).get("value", 0),
+                    "steps_count": len(leg.get("steps", [])),
+                    "polyline": route.get("overview_polyline", {}).get("points", "")
+                }
+                
+                # Add simplified steps
+                steps = []
+                for i, step in enumerate(leg.get("steps", [])[:3]):  # Limit to first 3 steps
+                    steps.append({
+                        "instruction": step.get("html_instructions", "").replace("<b>", "").replace("</b>", "").replace("<div>", " ").replace("</div>", ""),
+                        "distance": step.get("distance", {}).get("text", ""),
+                        "duration": step.get("duration", {}).get("text", "")
+                    })
+                
+                if steps:
+                    enhanced_spot["walking_info"]["steps"] = steps
+                
+                return enhanced_spot
+                
+        except Exception as e:
+            logger.error(f"Error adding walking directions for spot: {str(e)}")
+            return spot
+    
+    # Process all spots in parallel
+    tasks = [add_directions(spot) for spot in parking_spots]
+    enhanced_spots = await asyncio.gather(*tasks)
+    
+    return enhanced_spots
+
+
+# Update /api/get-recommendations to include parking spots
+@app.route("/api/get-recommendations-with-parking", methods=["GET"])
+def api_get_recommendations_with_parking():
+    """API endpoint to get location recommendations and nearby parking spots"""
+    try:
+        # First get the regular recommendations
+        # Check if model is loaded
+        global model_data
+        if not model_data:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Model not loaded. Please load or train a model first.",
+                    }
+                ),
+                400,
+            )
+
+        # Get time parameter
+        time_input = request.args.get("time", None)
+        top_n = int(request.args.get("top_n", 5))
+        radius = int(request.args.get("radius", 300))
+
+        # Get recommendations
+        recommendations = get_recommended_locations(
+            time_input,
+            model_data["top_locations_by_hour"],
+            model_data["time_block_locations"],
+            model_data["duration_map"],
+            top_n,
+        )
+        
+        # Create a single function to run all async operations
+        async def run_all_async_operations():
+            # Run all operations in parallel and wait for all to complete
+            hourly_task = async_locations_to_coordinates(recommendations["hourly_recommendations"])
+            block_task = async_locations_to_coordinates(recommendations["block_recommendations"])
+            top_task = async_locations_to_coordinates([recommendations["top_recommendation"]])
+            traffic_task = async_get_traffic_hotspots_google()
+            
+            # Wait for all tasks to complete
+            hourly_result, block_result, top_result, traffic_result = await asyncio.gather(
+                hourly_task, block_task, top_task, traffic_task
+            )
+            
+            # Create a list of all potential hotspots
+            all_hotspots = hourly_result + block_result + top_result + traffic_result
+            
+            # Find parking spots near all hotspots
+            parking_task = async_find_parking_near_hotspots(
+                all_hotspots, radius, 3
+            )
+            
+            # Execute parking task
+            parking_result = await parking_task
+            
+            # If not enough parking spots found, look for alternatives
+            if len(parking_result) < 5 and all_hotspots:
+                # For top 3 hotspots
+                alt_tasks = []
+                for hotspot in all_hotspots[:3]:
+                    alt_tasks.append(
+                        async_find_alternative_parking_areas(
+                            hotspot["lat"],
+                            hotspot["lng"],
+                            radius + 200
+                        )
+                    )
+                
+                # Get alternative parking areas
+                alt_results = await asyncio.gather(*alt_tasks)
+                
+                # Add alternative spots to parking results
+                for i, alt_spots in enumerate(alt_results):
+                    if i < len(all_hotspots):
+                        for spot in alt_spots:
+                            spot["nearby_hotspot"] = {
+                                "name": all_hotspots[i].get("location", "Unknown location"),
+                                "lat": all_hotspots[i]["lat"],
+                                "lng": all_hotspots[i]["lng"]
+                            }
+                            parking_result.append(spot)
+            
+            # Add walking directions
+            parking_with_directions = await async_add_walking_directions(parking_result)
+            
+            return hourly_result, block_result, top_result, traffic_result, parking_with_directions
+        
+        # Run all operations in a thread to avoid blocking
+        future = thread_pool.submit(run_in_thread, run_all_async_operations)
+        hourly_with_coords, block_with_coords, top_with_coords, traffic_hotspots, parking_spots = future.result()
+        
+        # Format response
+        response = {
+            "status": "success",
+            "time_input": time_input or datetime.now().strftime("%H:%M"),
+            "hour": recommendations["hour"],
+            "time_of_day": recommendations["time_of_day"],
+            "time_block": recommendations["time_block"],
+            "hourly_recommendations": hourly_with_coords,
+            "block_recommendations": block_with_coords,
+            "top_recommendation": top_with_coords,
+            "traffic_hotspots": traffic_hotspots,
+            "parking_spots": parking_spots
+        }
+
+        return jsonify(response)
+
+    except Exception as e:
+        logger.error(f"Error getting recommendations with parking: {str(e)}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Error: {str(e)}"}), 500
 
 def parse_args():
     """Parse command line arguments"""
