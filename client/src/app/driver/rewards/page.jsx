@@ -4,11 +4,11 @@ import { useState } from 'react'
 import Navbar from '@/components/ui/Navbar'
 import RewardSystem from '@/components/driver/RewardSystem'
 import IncentiveCalculator from '@/components/driver/IncentiveCalculator'
-import { mockRewardsData, mockDriverProfile } from '@/utils/mockData'
+import { DriverDashboard } from '@/utils/response/driver/dashboard'
 
 export default function DriverRewards() {
-  const [rewardsData, setRewardsData] = useState(mockRewardsData)
-  const [driverProfile, setDriverProfile] = useState(mockDriverProfile)
+  const [rewardsData, setRewardsData] = useState(DriverDashboard.rewards)
+  const [driverProfile, setDriverProfile] = useState(DriverDashboard)
   const [selectedTab, setSelectedTab] = useState('rewards')
   const [activeSection, setActiveSection] = useState('main')
   
@@ -54,37 +54,37 @@ export default function DriverRewards() {
                     </div>
                   </div>
                   
-                  <h2 className="card-title text-center mt-4 text-white">{driverProfile.name}</h2>
+                  <h2 className="card-title text-center mt-4 text-white">{driverProfile.driver.name}</h2>
                   <p className="text-center text-gray-400">Driver since {driverProfile.joiningDate}</p>
                   
                   <div className="mt-4">
-                    <p className="font-bold text-gray-200">Current Tier: <span className="text-emerald-400">{driverProfile.tier}</span></p>
+                    <p className="font-bold text-gray-200">Current Tier: <span className="text-emerald-400">{driverProfile.rewards.level}</span></p>
                     <progress 
                       className="progress w-full bg-gray-700 mt-2" 
-                      value={driverProfile.progress} 
+                      value={driverProfile.rewards.points} 
                       max="100"
                       style={{ "--progress-color": "#10b981" }}
                     ></progress>
-                    <p className="text-sm text-right text-gray-400">{driverProfile.progress}% to {driverProfile.nextTier}</p>
+                    <p className="text-sm text-right text-gray-400">{driverProfile.rewards.points}% to {driverProfile.rewards.nextLevel}</p>
                   </div>
                   
                   <div className="stats stats-vertical bg-gray-700 shadow mt-6 text-gray-100">
                     <div className="stat">
                       <div className="stat-title text-gray-400">Total Points</div>
-                      <div className="stat-value text-emerald-400">{driverProfile.totalPoints}</div>
+                      <div className="stat-value text-emerald-400">{driverProfile.driver.points}</div>
                       <div className="stat-desc text-gray-400">↗︎ 32 points this week</div>
                     </div>
                     
                     <div className="stat">
                       <div className="stat-title text-gray-400">Badges Earned</div>
-                      <div className="stat-value text-white">{driverProfile.badges.length}</div>
+                      <div className="stat-value text-white">{driverProfile.rewards.badges.length}</div>
                       <div className="stat-desc text-gray-400">↗︎ 2 new this month</div>
                     </div>
                   </div>
                   
                   <div className="flex flex-wrap gap-2 mt-4">
-                    {driverProfile.badges.map((badge, index) => (
-                      <div key={index} className="badge bg-gray-700 text-gray-200">{badge}</div>
+                    {driverProfile.rewards.badges.map((badge, index) => (
+                      <div key={index} className="badge bg-gray-700 text-gray-200">{badge.name}</div>
                     ))}
                   </div>
                 </div>
@@ -421,7 +421,7 @@ export default function DriverRewards() {
           <div className="w-full">
             <IncentiveCalculator 
               baseRate={50}
-              driverTier={driverProfile.tier}
+              driverTier={driverProfile.rewards.level}
               peakMultiplier={1.5}
               standPickup={false}
             />

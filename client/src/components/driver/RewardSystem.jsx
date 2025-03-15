@@ -2,44 +2,82 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { DriverDashboard } from '@/utils/response/driver/dashboard'
 
-export default function RewardSystem({ initialData = null }) {
-	const defaultData = {
-		points: 785,
-		tier: 'Gold',
-		nextTier: 'Platinum',
-		pointsToNextTier: 215,
-		badges: [
-			{ id: 1, name: 'Peak Hero', description: 'Completed 50+ rides during peak hours in Koramangala', icon: '🌟' },
-			{ id: 2, name: 'Weekend Warrior', description: 'Maintained 90%+ acceptance rate on weekends', icon: '🏆' },
-			{ id: 3, name: '5-Star Driver', description: 'Maintained a 5-star rating for 30+ consecutive rides', icon: '⭐' },
-			{ id: 4, name: 'Marathon Driver', description: 'Completed 1000+ rides in total across Bangalore', icon: '🏃' },
-			{ id: 5, name: 'Passenger Favorite', description: 'Received 50+ compliments from passengers', icon: '❤️' }
-		],
-		challenges: [
-			{ id: 1, name: 'Peak Hour Hero', progress: 4, total: 10, reward: '50 points', description: 'Complete 10 rides during peak hours in Koramangala this week' },
-			{ id: 2, name: 'Perfect Rating', progress: 12, total: 20, reward: '75 points', description: 'Maintain a 5-star rating for 20 consecutive rides' },
-			{ id: 3, name: 'Distance Champion', progress: 310, total: 500, reward: '100 points', description: 'Complete rides totaling 500 km across Bangalore this week' }
-		],
-		tierBenefits: {
-			Bronze: ['Basic rewards', '5% off on fuel', 'App priority during normal hours'],
-			Silver: ['8% off on fuel', '10% off vehicle maintenance', 'Priority customer support'],
-			Gold: ['12% off on fuel', '15% off vehicle maintenance', 'Vehicle insurance benefits', 'App priority during peak hours'],
-			Platinum: ['15% off on fuel', '20% off vehicle maintenance', 'Healthcare benefits', 'Educational scholarships for children', 'Top-tier app priority'],
-			Diamond: ['20% off on fuel', '25% off vehicle maintenance', 'Premium healthcare package', 'Vehicle upgrade assistance', 'Exclusive access to premium riders']
-		}
-	}
-	
-	const [rewardsData, setRewardsData] = useState(initialData || defaultData)
+export default function RewardSystem() {
+
+	const [rewardsData, setRewardsData] = useState(DriverDashboard.rewards)
 	const [selectedTab, setSelectedTab] = useState('overview')
 	
-	const tierProgressPercentage = Math.round((rewardsData.points / (rewardsData.points + rewardsData.pointsToNextTier)) * 100)
+	const tierProgressPercentage = Math.round(rewardsData.points)
 	const tiers = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond']
-	const currentTierIndex = tiers.indexOf(rewardsData.tier)
+	const currentTierIndex = tiers.indexOf(rewardsData.level)
 	
 	const badges = rewardsData.badges || []
-	const challenges = rewardsData.challenges || []
-	const tierBenefits = rewardsData.tierBenefits || {}
+	const challenges = rewardsData.challenges || [
+		{
+			id: 'ch1',
+			name: 'Peak Hour Hero',
+			description: 'Complete 20 rides during peak hours (8-10am, 5-8pm) this week',
+			progress: 14,
+			total: 20,
+			reward: '50 points + ₹200 bonus'
+		},
+		{
+			id: 'ch2',
+			name: 'Perfect Rating',
+			description: 'Maintain 5-star rating for your next 15 rides',
+			progress: 9,
+			total: 15,
+			reward: '60 points'
+		},
+		{
+			id: 'ch3',
+			name: 'Distance Champion',
+			description: 'Complete 200km of total ride distance this week',
+			progress: 135,
+			total: 200,
+			reward: '75 points + "Road Warrior" badge'
+		}
+	]
+	
+	const tierBenefits = rewardsData.tierBenefits || {
+		'Bronze': [
+			'Basic ride insurance',
+			'Weekly payment cycle',
+			'Standard support access'
+		],
+		'Silver': [
+			'All Bronze benefits',
+			'Priority support access',
+			'10% discount on vehicle maintenance',
+			'Faster payment cycle (3 days)'
+		],
+		'Gold': [
+			'All Silver benefits',
+			'Health insurance benefits',
+			'15% discount on vehicle maintenance',
+			'Partner discounts (food & retail)',
+			'Daily payment option'
+		],
+		'Platinum': [
+			'All Gold benefits',
+			'Premium health insurance',
+			'25% discount on vehicle maintenance',
+			'Exclusive partner benefits',
+			'Instant payment option',
+			'Family insurance coverage'
+		],
+		'Diamond': [
+			'All Platinum benefits',
+			'Comprehensive insurance package',
+			'35% discount on vehicle maintenance',
+			'VIP partner benefits',
+			'Vehicle upgrade assistance',
+			'Education benefits for children',
+			'Retirement savings contribution'
+		]
+	}
 	
 	return (
 		<div className="card bg-gray-800 shadow-xl border border-gray-700">
@@ -100,12 +138,12 @@ export default function RewardSystem({ initialData = null }) {
 								<div className="h-2.5 w-full bg-gray-600 rounded-full overflow-hidden">
 									<div 
 										className="h-full bg-emerald-500 rounded-full" 
-										style={{ width: `${tierProgressPercentage}%` }}
+										style={{ width: `${rewardsData.points}%` }}
 									></div>
 								</div>
 								<div className="flex justify-between mt-2 text-sm">
 									<span className="text-emerald-400 font-medium">{rewardsData.points} points</span>
-									<span className="text-gray-300">{rewardsData.pointsToNextTier} points needed</span>
+									<span className="text-gray-300">{100 - rewardsData.points} points needed</span>
 								</div>
 							</div>
 						</div>
