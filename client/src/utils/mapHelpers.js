@@ -2,7 +2,7 @@
 export const initializeMap = (container, center, zoom = 12) => {
   return new mapboxgl.Map({
     container,
-    style: 'mapbox:
+    style: 'mapbox:',
     center,
     zoom
   })

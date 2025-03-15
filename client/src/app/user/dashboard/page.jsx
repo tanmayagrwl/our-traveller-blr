@@ -4,7 +4,13 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/ui/Navbar'
 import RideMap from '@/components/maps/RideMap'
-import { mockUserLocation, mockRecentRides } from '@/utils/mockData'
+import { 
+	mockUserLocation, 
+	mockRecentRides, 
+	mockPeakHourTips, 
+	mockPromoData,
+	mockIcons
+} from '@/utils/mockData'
 import { motion } from 'framer-motion'
 
 export default function UserDashboard() {
@@ -46,20 +52,19 @@ export default function UserDashboard() {
 							transition={{ duration: 0.3, delay: 0.1 }}
 						>
 							<div className="card-body">
-								<h2 className="card-title text-white">Quick Book</h2>
+								<h2 className="card-title text-white font-bold">Quick Book</h2>
 								
 								<div className="form-control mt-4">
 									<div className="input-group">
 										<span className="bg-gray-700 px-4 flex items-center text-gray-300">
 											<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+												{mockIcons.info}
 											</svg>
 										</span>
 										<input 
 											type="text" 
 											placeholder="Pickup location" 
-											className="input bg-gray-700 border-gray-600 text-white w-full" 
+											className="input bg-gray-700 border-gray-600 text-white w-full focus:border-emerald-500" 
 											defaultValue="Current Location"
 										/>
 									</div>
@@ -69,21 +74,20 @@ export default function UserDashboard() {
 									<div className="input-group">
 										<span className="bg-gray-700 px-4 flex items-center text-gray-300">
 											<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+												{mockIcons.info}
 											</svg>
 										</span>
 										<input 
 											type="text" 
 											placeholder="Destination" 
-											className="input bg-gray-700 border-gray-600 text-white w-full" 
+											className="input bg-gray-700 border-gray-600 text-white w-full focus:border-emerald-500" 
 										/>
 									</div>
 								</div>
 								
 								<div className="mt-6">
 									<motion.button 
-										className="btn bg-emerald-500 text-white hover:bg-emerald-600 border-none w-full mb-2"
+										className="btn bg-emerald-500 text-white hover:bg-emerald-600 border-none w-full mb-2 font-bold"
 										onClick={() => router.push('/user/booking')}
 										whileHover={{ scale: 1.02 }}
 										whileTap={{ scale: 0.98 }}
@@ -105,7 +109,7 @@ export default function UserDashboard() {
 								
 								<div className="flex justify-between gap-4">
 									<motion.button 
-										className="btn bg-purple-500 text-white hover:bg-purple-600 border-none flex-1"
+										className="btn bg-purple-500 text-white hover:bg-purple-600 border-none flex-1 font-bold"
 										onClick={() => router.push('/user/carpooling')}
 										whileHover={{ scale: 1.02 }}
 										whileTap={{ scale: 0.98 }}
@@ -114,7 +118,7 @@ export default function UserDashboard() {
 									</motion.button>
 									
 									<motion.button 
-										className="btn bg-blue-500 text-white hover:bg-blue-600 border-none flex-1"
+										className="btn bg-blue-500 text-white hover:bg-blue-600 border-none flex-1 font-bold"
 										onClick={() => router.push('/user/shuttle')}
 										whileHover={{ scale: 1.02 }}
 										whileTap={{ scale: 0.98 }}
@@ -132,17 +136,17 @@ export default function UserDashboard() {
 							transition={{ duration: 0.3, delay: 0.2 }}
 						>
 							<div className="card-body">
-								<h2 className="card-title text-white">Current Status</h2>
+								<h2 className="card-title text-white font-bold">Current Status</h2>
 								
 								<div className="stats shadow mt-4 bg-gray-700 text-white">
 									<div className="stat">
-										<div className="stat-title text-gray-300">Wait Time</div>
+										<div className="stat-title text-gray-300 font-bold">Wait Time</div>
 										<div className="stat-value text-emerald-400">{waitTime} min</div>
 										<div className="stat-desc text-gray-300">↘︎ 20% less than usual</div>
 									</div>
 									
 									<div className="stat">
-										<div className="stat-title text-gray-300">Nearby Drivers</div>
+										<div className="stat-title text-gray-300 font-bold">Nearby Drivers</div>
 										<div className="stat-value text-white">{nearbyDrivers}</div>
 										<div className="stat-desc text-gray-300">Available now</div>
 									</div>
@@ -150,7 +154,7 @@ export default function UserDashboard() {
 								
 								<div className="alert bg-blue-900/50 mt-4 border border-blue-700">
 									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-blue-400 shrink-0 w-6 h-6">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+										{mockIcons.info}
 									</svg>
 									<span className="text-blue-100">Surge pricing in effect. Consider carpooling to save 30%!</span>
 								</div>
@@ -166,7 +170,7 @@ export default function UserDashboard() {
 							transition={{ duration: 0.3, delay: 0.1 }}
 						>
 							<div className="card-body">
-								<h2 className="card-title text-white">Your Location</h2>
+								<h2 className="card-title text-white font-bold">Your Location</h2>
 								<div className="h-96 w-full rounded-lg overflow-hidden">
 									<RideMap userLocation={userLocation} />
 								</div>
@@ -180,11 +184,11 @@ export default function UserDashboard() {
 							transition={{ duration: 0.3, delay: 0.2 }}
 						>
 							<div className="card-body">
-								<h2 className="card-title text-white">Recent Rides</h2>
+								<h2 className="card-title text-white font-bold">Recent Rides</h2>
 								
 								<div className="overflow-x-auto">
 									<table className="table bg-gray-700 text-gray-200">
-										<thead className="text-gray-200">
+										<thead className="text-gray-200 font-bold">
 											<tr>
 												<th>Date</th>
 												<th>Destination</th>
@@ -205,10 +209,10 @@ export default function UserDashboard() {
 												>
 													<td className="text-white">{ride.date}</td>
 													<td className="text-white">{ride.destination}</td>
-													<td className="text-white">₹{ride.fare}</td>
+													<td className="text-white font-bold">₹{ride.fare}</td>
 													<td className="text-white">{ride.driver}</td>
 													<td>
-														<div className={`badge ${ride.type === 'Individual' ? 'bg-emerald-500' : ride.type === 'Carpool' ? 'bg-purple-500' : 'bg-blue-500'} text-white`}>
+														<div className={`badge ${ride.type === 'Individual' ? 'bg-emerald-500' : ride.type === 'Carpool' ? 'bg-purple-500' : 'bg-blue-500'} text-white font-bold`}>
 															{ride.type}
 														</div>
 													</td>
@@ -239,12 +243,11 @@ export default function UserDashboard() {
 						transition={{ duration: 0.3, delay: 0.3 }}
 					>
 						<div className="card-body">
-							<h2 className="card-title text-white">Peak Hour Tips</h2>
+							<h2 className="card-title text-white font-bold">Peak Hour Tips</h2>
 							<ul className="list-disc list-inside text-sm mt-2 text-gray-300">
-								<li>Book 15 minutes in advance during peak hours</li>
-								<li>Consider carpooling to save money and time</li>
-								<li>Check shuttle services for common routes</li>
-								<li>Use designated pickup stands for faster service</li>
+								{mockPeakHourTips.map((tip, index) => (
+									<li key={index}>{tip}</li>
+								))}
 							</ul>
 						</div>
 					</motion.div>
@@ -256,12 +259,13 @@ export default function UserDashboard() {
 						transition={{ duration: 0.3, delay: 0.4 }}
 					>
 						<div className="card-body">
-							<h2 className="card-title text-center text-white">Promotions</h2>
+							<h2 className="card-title text-center text-white font-bold">Promotions</h2>
 							<div className="flex flex-col gap-4 mt-4">
-								<div className="badge badge-lg bg-emerald-500 text-white">₹50 off on next ride</div>
-								<div className="badge badge-lg bg-purple-500 text-white">Refer a friend and earn ₹100</div>
-								<div className="badge badge-lg bg-blue-500 text-white">Get 20% off on carpooling</div>
-								<div className="badge badge-lg bg-amber-500 text-white">Free shuttle ride on weekends</div>
+								{mockPromoData.map((promo, index) => (
+									<div key={index} className={`badge badge-lg ${index === 0 ? 'bg-emerald-500' : index === 1 ? 'bg-purple-500' : index === 2 ? 'bg-blue-500' : 'bg-amber-500'} text-white font-bold`}>
+										{promo}
+									</div>
+								))}
 							</div>
 						</div>
 					</motion.div>

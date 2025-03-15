@@ -22,6 +22,22 @@ export default function Navbar() {
 
 	const isDriver = userType === 'driver'
 	
+	const driverLinks = [
+		{ href: '/driver/dashboard', label: 'Dashboard' },
+		{ href: '/driver/rewards', label: 'Rewards & Incentives' },
+		{ href: '/driver/heatmap', label: 'Demand Heatmap' },
+		{ href: '/driver/schedule', label: 'Schedule Rides' }
+	]
+	
+	const userLinks = [
+		{ href: '/user/dashboard', label: 'Dashboard' },
+		{ href: '/user/booking', label: 'Book a Ride' },
+		{ href: '/user/carpooling', label: 'Carpooling' },
+		{ href: '/user/shuttle', label: 'Shuttle Service' }
+	]
+	
+	const navLinks = isDriver ? driverLinks : userLinks
+	
 	return (
 		<div className="navbar bg-gray-800 text-white shadow-lg border-b border-gray-700">
 			<div className="navbar-start">
@@ -32,21 +48,13 @@ export default function Navbar() {
 						</svg>
 					</label>
 					<ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-gray-800 rounded-box w-52 border border-gray-700">
-						{isDriver ? (
-							<>
-								<li><Link href="/driver/dashboard" className="hover:text-emerald-400">Dashboard</Link></li>
-								<li><Link href="/driver/rewards" className="hover:text-emerald-400">Rewards & Incentives</Link></li>
-								<li><Link href="/driver/heatmap" className="hover:text-emerald-400">Demand Heatmap</Link></li>
-								<li><Link href="/driver/schedule" className="hover:text-emerald-400">Schedule Rides</Link></li>
-							</>
-						) : (
-							<>
-								<li><Link href="/user/dashboard" className="hover:text-emerald-400">Dashboard</Link></li>
-								<li><Link href="/user/booking" className="hover:text-emerald-400">Book a Ride</Link></li>
-								<li><Link href="/user/carpooling" className="hover:text-emerald-400">Carpooling</Link></li>
-								<li><Link href="/user/shuttle" className="hover:text-emerald-400">Shuttle Service</Link></li>
-							</>
-						)}
+						{navLinks.map((link) => (
+							<li key={link.href}>
+								<Link href={link.href} className="hover:text-emerald-400 font-medium">
+									{link.label}
+								</Link>
+							</li>
+						))}
 					</ul>
 				</div>
 				<Link href="/" className="flex items-center">
@@ -67,26 +75,21 @@ export default function Navbar() {
 			</div>
 			<div className="navbar-center hidden lg:flex">
 				<ul className="menu menu-horizontal px-1">
-					{isDriver ? (
-						<>
-							<li><Link href="/driver/dashboard" className={`hover:text-emerald-400 ${pathname === '/driver/dashboard' ? 'text-emerald-400 font-bold' : ''}`}>Dashboard</Link></li>
-							<li><Link href="/driver/rewards" className={`hover:text-emerald-400 ${pathname === '/driver/rewards' ? 'text-emerald-400 font-bold' : ''}`}>Rewards & Incentives</Link></li>
-							<li><Link href="/driver/heatmap" className={`hover:text-emerald-400 ${pathname === '/driver/heatmap' ? 'text-emerald-400 font-bold' : ''}`}>Demand Heatmap</Link></li>
-							<li><Link href="/driver/schedule" className={`hover:text-emerald-400 ${pathname === '/driver/schedule' ? 'text-emerald-400 font-bold' : ''}`}>Schedule Rides</Link></li>
-						</>
-					) : (
-						<>
-							<li><Link href="/user/dashboard" className={`hover:text-emerald-400 ${pathname === '/user/dashboard' ? 'text-emerald-400 font-bold' : ''}`}>Dashboard</Link></li>
-							<li><Link href="/user/booking" className={`hover:text-emerald-400 ${pathname === '/user/booking' ? 'text-emerald-400 font-bold' : ''}`}>Book a Ride</Link></li>
-							<li><Link href="/user/carpooling" className={`hover:text-emerald-400 ${pathname === '/user/carpooling' ? 'text-emerald-400 font-bold' : ''}`}>Carpooling</Link></li>
-							<li><Link href="/user/shuttle" className={`hover:text-emerald-400 ${pathname === '/user/shuttle' ? 'text-emerald-400 font-bold' : ''}`}>Shuttle Service</Link></li>
-						</>
-					)}
+					{navLinks.map((link) => (
+						<li key={link.href}>
+							<Link 
+								href={link.href} 
+								className={`hover:text-emerald-400 ${pathname === link.href ? 'text-emerald-400 font-bold' : ''}`}
+							>
+								{link.label}
+							</Link>
+						</li>
+					))}
 				</ul>
 			</div>
 			<div className="navbar-end">
 				<motion.button 
-					className="btn btn-sm bg-gray-700 hover:bg-emerald-500 text-white border-none"
+					className="btn btn-sm bg-gray-700 hover:bg-emerald-500 text-white border-none font-bold"
 					onClick={() => router.push('/')}
 					whileHover={{ scale: 1.05 }}
 					whileTap={{ scale: 0.95 }}

@@ -4,61 +4,21 @@ import { useState } from 'react'
 import Navbar from '@/components/ui/Navbar'
 import RideMap from '@/components/maps/RideMap'
 import ShuttleSchedule from '@/components/user/ShuttleSchedule'
-import { mockUserLocation } from '@/utils/mockData'
+import { 
+	mockUserLocation, 
+	mockShuttleRoutes, 
+	mockAlertInfo,
+	mockIcons,
+	mockScheduleRoutes
+} from '@/utils/mockData'
 import { motion } from 'framer-motion'
 
 export default function UserShuttle() {
+	console.log({ mockUserLocation, mockShuttleRoutes, mockAlertInfo, mockIcons })
 	const [userLocation, setUserLocation] = useState(mockUserLocation)
 	const [selectedRoute, setSelectedRoute] = useState(null)
 	const [showBookingForm, setShowBookingForm] = useState(false)
 	const [bookingDetails, setBookingDetails] = useState(null)
-	
-	const shuttleRoutes = [
-		{
-			id: 1,
-			name: "IT Corridor Express",
-			from: "Central Station",
-			to: "Siruseri IT Park",
-			stops: 6,
-			fare: 40,
-			regularFare: 150,
-			schedule: ["7:00 AM", "8:00 AM", "9:00 AM", "5:00 PM", "6:00 PM", "7:00 PM"],
-			status: "Running"
-		},
-		{
-			id: 2,
-			name: "Airport Shuttle",
-			from: "T Nagar",
-			to: "Airport",
-			stops: 4,
-			fare: 60,
-			regularFare: 180,
-			schedule: ["6:00 AM", "8:00 AM", "10:00 AM", "12:00 PM", "2:00 PM", "4:00 PM", "6:00 PM", "8:00 PM"],
-			status: "Running"
-		},
-		{
-			id: 3,
-			name: "Anna Nagar - Velachery",
-			from: "Anna Nagar",
-			to: "Velachery",
-			stops: 8,
-			fare: 35,
-			regularFare: 130,
-			schedule: ["7:30 AM", "8:30 AM", "9:30 AM", "5:30 PM", "6:30 PM", "7:30 PM"],
-			status: "Running"
-		},
-		{
-			id: 4,
-			name: "North Chennai Connect",
-			from: "Broadway",
-			to: "Tiruvottiyur",
-			stops: 7,
-			fare: 30,
-			regularFare: 120,
-			schedule: ["7:15 AM", "8:15 AM", "9:15 AM", "5:15 PM", "6:15 PM", "7:15 PM"],
-			status: "Launching Soon"
-		}
-	]
 	
 	const selectRoute = (route) => {
 		setSelectedRoute(route)
@@ -95,15 +55,15 @@ export default function UserShuttle() {
 				</motion.h1>
 				
 				<motion.div 
-					className="alert bg-gray-700 border border-gray-600 mb-6"
+					className="alert bg-gray-800 border border-gray-700 mb-6"
 					initial={{ opacity: 0, y: -10 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.3, delay: 0.1 }}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-emerald-400 shrink-0 w-6 h-6">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+						{mockIcons.info}
 					</svg>
-					<span className="text-gray-200">Shuttles offer fixed-route transportation at significantly lower prices during peak hours. Each shuttle can accommodate up to 20 passengers.</span>
+					<span className="text-gray-200">{mockAlertInfo.shuttleInfo}</span>
 				</motion.div>
 				
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -115,14 +75,14 @@ export default function UserShuttle() {
 							transition={{ duration: 0.3, delay: 0.2 }}
 						>
 							<div className="card-body">
-								<h2 className="card-title text-white">Available Routes</h2>
+								<h2 className="card-title text-white font-bold">Available Routes</h2>
 								
 								{bookingDetails ? (
 									<div>
 										<div className="bg-emerald-900/50 text-emerald-100 p-4 rounded-lg mb-4 border border-emerald-700">
 											<div className="flex items-center">
 												<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+													{mockIcons.check}
 												</svg>
 												<h3 className="font-bold">Shuttle Booked!</h3>
 											</div>
@@ -215,7 +175,7 @@ export default function UserShuttle() {
 									</div>
 								) : (
 									<div className="grid grid-cols-1 gap-4 mt-4">
-										{shuttleRoutes.map((route, index) => (
+										{mockShuttleRoutes.map((route, index) => (
 											<motion.div 
 												key={route.id} 
 												className="card bg-gray-700 hover:bg-gray-650 border border-gray-600 hover:border-emerald-500 transition-all"
@@ -225,7 +185,7 @@ export default function UserShuttle() {
 												whileHover={{ y: -5 }}
 											>
 												<div className="card-body p-4">
-													<h3 className="card-title text-base text-white">{route.name}</h3>
+													<h3 className="card-title text-base text-white font-bold">{route.name}</h3>
 													<p className="text-sm text-gray-300">{route.from} → {route.to}</p>
 													<p className="text-xs text-gray-400">{route.stops} stops</p>
 													
@@ -265,7 +225,7 @@ export default function UserShuttle() {
 							transition={{ duration: 0.3, delay: 0.2 }}
 						>
 							<div className="card-body">
-								<h2 className="card-title text-white">Route Map</h2>
+								<h2 className="card-title text-white font-bold">Route Map</h2>
 								<div className="h-96 w-full rounded-lg overflow-hidden">
 									<RideMap userLocation={userLocation} />
 								</div>
@@ -279,21 +239,21 @@ export default function UserShuttle() {
 							transition={{ duration: 0.3, delay: 0.3 }}
 						>
 							<div className="card-body">
-								<h2 className="card-title text-white">Shuttle Schedule</h2>
-								<ShuttleSchedule />
+								<h2 className="card-title text-white font-bold">Shuttle Schedule</h2>
+								<ShuttleSchedule routes={mockScheduleRoutes} />
 								
 								<div className="alert bg-emerald-900/50 mt-4 border border-emerald-700">
 									<svg xmlns="http://www.w3.org/2000/svg" className="stroke-emerald-400 shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+										{mockIcons.check}
 									</svg>
-									<span className="text-emerald-100">Using shuttle services can save you up to 70% compared to individual rides during peak hours.</span>
+									<span className="text-emerald-100">{mockAlertInfo.savingsInfo}</span>
 								</div>
 								
 								<div className="alert bg-amber-900/50 mt-2 border border-amber-700">
 									<svg xmlns="http://www.w3.org/2000/svg" className="stroke-amber-400 shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+										{mockIcons.warning}
 									</svg>
-									<span className="text-amber-100">Shuttles follow fixed routes with designated stops. Book in advance to secure your seat.</span>
+									<span className="text-amber-100">{mockAlertInfo.bookingAlert}</span>
 								</div>
 							</div>
 						</motion.div>
