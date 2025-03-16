@@ -1,10 +1,10 @@
-# Namma Yatri Booth Location Recommender API
+# Our Traveller Booth Location Recommender API
 
-This project provides a REST API server that recommends optimal locations for setting up in-app booths for the Namma Yatri app in Bangalore based on time of day.
+This project provides a REST API server that recommends optimal locations for setting up in-app booths for the Our Traveller app in Bangalore based on time of day.
 
 ## Overview
 
-The API analyzes trip patterns from Namma Yatri data to determine the most active locations for each hour of the day and provides recommendations through a simple REST API.
+The API analyzes trip patterns from Our Traveller data to determine the most active locations for each hour of the day and provides recommendations through a simple REST API.
 
 ## Files
 
@@ -28,7 +28,7 @@ The API analyzes trip patterns from Namma Yatri data to determine the most activ
 pip install flask pandas numpy joblib openpyxl requests
 ```
 
-3. Make sure you have the Namma Yatri Excel data file (`namma_yatri_data.xlsx`)
+3. Make sure you have the Our Traveller Excel data file (`namma_yatri_data.xlsx`)
 
 ## Running the API Server
 
@@ -93,7 +93,7 @@ Loads a pre-trained model from a file.
 POST /api/train-model
 ```
 
-Trains a new model from the Namma Yatri Excel data.
+Trains a new model from the Our Traveller Excel data.
 
 **Request Body:**
 ```json

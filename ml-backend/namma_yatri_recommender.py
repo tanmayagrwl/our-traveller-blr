@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def load_data(excel_path):
-    """Load the Namma Yatri data from Excel file"""
+    """Load the Our Traveller data from Excel file"""
     try:
         # Load all worksheets
         trips_df = pd.read_excel(excel_path, sheet_name='Trips')
