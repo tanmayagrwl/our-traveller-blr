@@ -451,7 +451,7 @@ def api_get_recommendations():
 
 async def async_find_parking_near_hotspots(
     hotspots: list,
-    radius: int = 300,
+    radius: int = 700,
     max_results: int = 3
 ) -> list:
     """
