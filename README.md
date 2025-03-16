@@ -2,6 +2,10 @@
   <img alt="Logo" src="https://github.com/user-attachments/assets/e7217733-e62e-451c-a355-46d84db7feff" height="56" />
 </div>
 
+<div align="center">
+  <img alt="Logo" src="https://github.com/user-attachments/assets/926af654-1e2a-4454-b5af-4e7c47417e76" height="100" />
+</div>
+
 
 <br>
 <p align="center">
