@@ -3,10 +3,7 @@ export const mockDriverLocation = {
 	lng: 80.2707
 }
 
-export const mockUserLocation = {
-	lat: 13.0850,
-	lng: 80.2700
-}
+export const mockUserLocation = { lat: 12.9716, lng: 77.5946 }
 
 export const mockDailyStats = {
 	completedRides: 8,

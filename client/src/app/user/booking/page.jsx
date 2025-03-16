@@ -10,23 +10,24 @@ import useSocket from '@/hooks/useSocket'
 
 // Location Selection Component
 const LocationInput = ({ label, value, onChange, icon, placeholder }) => (
-  <div className="form-control mb-4">
-    <label className="label font-medium text-gray-300">{label}</label>
-    <div className="input-group">
-      <span className="bg-gray-800 px-4 flex items-center text-emerald-400 border-r border-gray-700">
-        {icon}
-      </span>
-      <input
-        type="text" 
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="input bg-gray-800 border-gray-700 text-white w-full focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
-        required={label === "Destination"}
-      />
-    </div>
-  </div>
-)
+	<div className="form-control mb-6">
+	  <label className="label text-lg font-medium text-gray-300">{label}</label>
+	  <div className="relative">
+		<div className="absolute left-0 top-0 h-full flex items-center px-4 bg-gray-800 border-r border-gray-700">
+		  <span className="text-emerald-400">{icon}</span>
+		</div>
+		<input
+		  type="text"
+		  value={value}
+		  onChange={(e) => onChange(e.target.value)}
+		  placeholder={placeholder}
+		  className="input w-full pl-12 pr-4 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+		  required={label === "Destination"}
+		/>
+	  </div>
+	</div>
+  );
+  
 
 // Toggle Component
 const ToggleOption = ({ label, description, isActive, onToggle }) => (

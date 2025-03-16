@@ -3,29 +3,30 @@
 import { useState, useEffect } from 'react'
 import Navbar from '@/components/ui/Navbar'
 import HeatMap from '@/components/maps/HeatMap'
+import ParkingMap from '@/components/maps/ParkingMap'
 import { motion } from 'framer-motion'
+import fallbackData from '@/utils/res.json'
 
 function getHourFromTime(time = 'morning') {
-    switch (time) {
-        case 'morning':
-            return '08:00'
-        case 'afternoon':
-            return '13:00'
-        case 'evening':
-            return '17:00'
-        default:
-            return '08:00'
-    }
+	switch (time) {
+		case 'morning':
+			return '08:00'
+		case 'afternoon':
+			return '13:00'
+		case 'evening':
+			return '17:00'
+		default:
+			return '08:00'
+	}
 }
 
 export default function DriverHeatmap() {
 	const [timeOfDay, setTimeOfDay] = useState('morning')
-	const [recommendations, setRecommendations] = useState({
-		block_recommendations: [],
-		hourly_recommendations: [],
-		top_recommendation: '',
-		time_block: '',
-		time_of_day: ''
+	const [activeTab, setActiveTab] = useState('heatmap')
+	const [data, setData] = useState({
+		hotspots: [],
+		parking_spots: [],
+		status: 'loading'
 	})
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState(null)
@@ -35,18 +36,29 @@ export default function DriverHeatmap() {
 		const fetchData = async () => {
 			try {
 				setIsLoading(true)
-				const response = await fetch(`http://localhost:5000/api/get-recommendations?time=${getHourFromTime(timeOfDay)}`)
+				const response = await fetch(`http://127.0.0.1:8080/api/find-parking?time=${getHourFromTime(timeOfDay)}`)
 				
 				if (!response.ok) {
-					throw new Error('Failed to fetch heatmap data')
+					throw new Error('Failed to fetch data')
 				}
 				
-				const data = await response.json()
-				setRecommendations(data)
+				const responseData = await response.json()
+				setData(responseData)
 				setError(null)
 			} catch (err) {
 				console.error('Error processing data:', err)
-				setError('Failed to load data. Please try again later.')
+				
+				try {
+					if (fallbackData) {
+						setData(fallbackData)
+						setError(null)
+					} else {
+						setError('Failed to load data. Please try again later.')
+					}
+				} catch (fallbackErr) {
+					console.error('Error loading fallback data:', fallbackErr)
+					setError('Failed to load data. Please try again later.')
+				}
 			} finally {
 				setIsLoading(false)
 			}
@@ -64,7 +76,7 @@ export default function DriverHeatmap() {
 			<div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
 				<div className="text-center">
 					<div className="loading loading-spinner loading-lg text-emerald-500"></div>
-					<p className="mt-4">Loading heatmap data...</p>
+					<p className="mt-4">Loading data...</p>
 				</div>
 			</div>
 		)
@@ -82,6 +94,17 @@ export default function DriverHeatmap() {
 			</div>
 		)
 	}
+
+	const getTopHotspots = () => {
+		if (!data.hotspots || data.hotspots.length === 0) return []
+		const topHotspots = data.hotspots.slice(0, 7)
+		return topHotspots.map(hotspot => hotspot.location)
+	}
+	
+	const getTopHotspot = () => {
+		if (!data.hotspots || data.hotspots.length === 0) return ''
+		return data.hotspots[0].location
+	}
 	
 	return (
 		<div className="min-h-screen bg-gray-900 text-white">
@@ -94,163 +117,300 @@ export default function DriverHeatmap() {
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.3 }}
 				>
-					Driver Recommendations
+					Driver Resources
 				</motion.h1>
 				
 				<motion.div 
-					className="card bg-gray-800 shadow-xl mb-6 border border-gray-700"
-					initial={{ opacity: 0, y: -20 }}
+					className="tabs tabs-boxed mb-6 bg-gray-800 p-1"
+					initial={{ opacity: 0, y: -10 }}
 					animate={{ opacity: 1, y: 0 }}
-					transition={{ duration: 0.3 }}
+					transition={{ duration: 0.3, delay: 0.1 }}
 				>
-					<div className="card-body">
-						<div className="flex flex-wrap items-center justify-between mb-4">
-							<h2 className="card-title text-white">Heat Map: {recommendations.time_block || 'Current Time'}</h2>
-							
-							<div className="form-control">
-								<div className="join">
-									<motion.button 
-										className={`btn join-item ${timeOfDay === 'morning' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-200'}`}
-										onClick={() => handleTimeChange('morning')}
-										whileHover={{ scale: 1.05 }}
-										whileTap={{ scale: 0.95 }}
-									>
-										Morning (8-10 AM)
-									</motion.button>
-									<motion.button 
-										className={`btn join-item ${timeOfDay === 'afternoon' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-200'}`}
-										onClick={() => handleTimeChange('afternoon')}
-										whileHover={{ scale: 1.05 }}
-										whileTap={{ scale: 0.95 }}
-									>
-										Afternoon (1-3 PM)
-									</motion.button>
-									<motion.button 
-										className={`btn join-item ${timeOfDay === 'evening' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-200'}`}
-										onClick={() => handleTimeChange('evening')}
-										whileHover={{ scale: 1.05 }}
-										whileTap={{ scale: 0.95 }}
-									>
-										Evening (5-8 PM)
-									</motion.button>
-								</div>
-							</div>
-						</div>
-						
-						<div className="h-[70vh] w-full rounded-lg overflow-hidden">
-							<HeatMap 
-								hourlyRecommendations={recommendations.hourly_recommendations} 
-								blockRecommendations={recommendations.block_recommendations}
-								driverLocation={driverLocation}
-								topRecommendation={recommendations.top_recommendation}
-							/>
-						</div>
-						
-						<div className="alert bg-gray-700 mt-4 border border-gray-600">
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-emerald-400 shrink-0 w-6 h-6">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-							</svg>
-							<span className="text-gray-200">
-								Top recommendation: <span className="text-emerald-400 font-bold">{recommendations.top_recommendation}</span> (Time: {recommendations.time_of_day})
-							</span>
-						</div>
-					</div>
+					<a 
+						className={`tab ${activeTab === 'heatmap' ? 'bg-emerald-500 text-white' : 'text-gray-300'}`}
+						onClick={() => setActiveTab('heatmap')}
+					>
+						Hotspot Heatmap
+					</a>
+					<a 
+						className={`tab ${activeTab === 'parking' ? 'bg-emerald-500 text-white' : 'text-gray-300'}`}
+						onClick={() => setActiveTab('parking')}
+					>
+						Parking Locations
+					</a>
 				</motion.div>
 				
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				{activeTab === 'heatmap' && (
 					<motion.div 
-						className="card bg-gray-800 shadow-xl border border-gray-700"
-						initial={{ opacity: 0, x: -20 }}
-						animate={{ opacity: 1, x: 0 }}
-						transition={{ duration: 0.3, delay: 0.1 }}
+						className="card bg-gray-800 shadow-xl mb-6 border border-gray-700"
+						initial={{ opacity: 0, y: -20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.3 }}
 					>
 						<div className="card-body">
-							<h2 className="card-title text-white">Hourly Recommendations</h2>
-							
-							<div className="overflow-x-auto">
-								<table className="table bg-gray-700 text-gray-200">
-									<thead className="text-gray-200">
-										<tr>
-											<th>Rank</th>
-											<th>Area</th>
-											<th>Intensity</th>
-										</tr>
-									</thead>
-									<tbody>
-										{recommendations.hourly_recommendations.map((area, index) => (
-											<tr key={index} className="hover:bg-gray-600">
-												<td className="text-white">#{index + 1}</td>
-												<td>{area}</td>
-												<td>
-													<progress 
-														className="progress bg-gray-600" 
-														style={{ 
-															color: index === 0 ? "#ef4444" : 
-																   index === 1 ? "#f97316" : 
-																   index === 2 ? "#f59e0b" : 
-																   index === 3 ? "#eab308" : "#facc15" 
-														}} 
-														value={100 - (index * 20)} 
-														max="100"
-													></progress>
-												</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
+							<div className="flex flex-wrap items-center justify-between mb-4">
+								<h2 className="card-title text-white">Hotspot Heatmap</h2>
+								
+								<div className="form-control">
+									<div className="join">
+										<motion.button 
+											className={`btn join-item ${timeOfDay === 'morning' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-200'}`}
+											onClick={() => handleTimeChange('morning')}
+											whileHover={{ scale: 1.05 }}
+											whileTap={{ scale: 0.95 }}
+										>
+											Morning (8-10 AM)
+										</motion.button>
+										<motion.button 
+											className={`btn join-item ${timeOfDay === 'afternoon' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-200'}`}
+											onClick={() => handleTimeChange('afternoon')}
+											whileHover={{ scale: 1.05 }}
+											whileTap={{ scale: 0.95 }}
+										>
+											Afternoon (1-3 PM)
+										</motion.button>
+										<motion.button 
+											className={`btn join-item ${timeOfDay === 'evening' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-200'}`}
+											onClick={() => handleTimeChange('evening')}
+											whileHover={{ scale: 1.05 }}
+											whileTap={{ scale: 0.95 }}
+										>
+											Evening (5-8 PM)
+										</motion.button>
+									</div>
+								</div>
 							</div>
+							
+							<div className="h-[70vh] w-full rounded-lg overflow-hidden">
+								<HeatMap 
+									hourlyRecommendations={getTopHotspots().slice(1, 5)} 
+									blockRecommendations={getTopHotspots().slice(5)}
+									driverLocation={driverLocation}
+									topRecommendation={getTopHotspot()}
+								/>
+							</div>
+							
+							{data.hotspots && data.hotspots.length > 0 && (
+								<div className="alert bg-gray-700 mt-4 border border-gray-600">
+									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-emerald-400 shrink-0 w-6 h-6">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+									</svg>
+									<span className="text-gray-200">
+										Top recommendation: <span className="text-emerald-400 font-bold">{getTopHotspot()}</span> (Time: {getHourFromTime(timeOfDay)})
+									</span>
+								</div>
+							)}
 						</div>
 					</motion.div>
-					
+				)}
+				
+				{activeTab === 'parking' && (
 					<motion.div 
-						className="card bg-gray-800 shadow-xl border border-gray-700"
-						initial={{ opacity: 0, x: 20 }}
-						animate={{ opacity: 1, x: 0 }}
-						transition={{ duration: 0.3, delay: 0.2 }}
+						className="card bg-gray-800 shadow-xl mb-6 border border-gray-700"
+						initial={{ opacity: 0, y: -20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.3 }}
 					>
 						<div className="card-body">
-							<h2 className="card-title text-white">Block Recommendations</h2>
-							
-							<div className="overflow-x-auto">
-								<table className="table bg-gray-700 text-gray-200">
-									<thead className="text-gray-200">
-										<tr>
-											<th>Rank</th>
-											<th>Area</th>
-											<th>Intensity</th>
-										</tr>
-									</thead>
-									<tbody>
-										{recommendations.block_recommendations.map((area, index) => (
-											<tr key={index} className="hover:bg-gray-600">
-												<td className="text-white">#{index + 1}</td>
-												<td>{area}</td>
-												<td>
-													<progress 
-														className="progress bg-gray-600" 
-														style={{ 
-															color: index === 0 ? "#ef4444" : 
-																   index === 1 ? "#f97316" : 
-																   index === 2 ? "#f59e0b" : 
-																   index === 3 ? "#eab308" : "#facc15" 
-														}} 
-														value={100 - (index * 20)} 
-														max="100"
-													></progress>
-												</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
+							<div className="flex flex-wrap items-center justify-between mb-4">
+								<h2 className="card-title text-white">Available Parking Locations</h2>
 							</div>
 							
-							<div className="divider bg-gray-700"></div>
+							<div className="h-[70vh] w-full rounded-lg overflow-hidden">
+								<ParkingMap 
+									parkingSpots={data.parking_spots} 
+									driverLocation={driverLocation}
+								/>
+							</div>
 							
-							<h3 className="font-bold text-white">Current Time: {recommendations.time_input || 'N/A'}</h3>
-							<h3 className="font-bold text-white">Hour: {recommendations.hour || 'N/A'}</h3>
+							{data.parking_spots && data.parking_spots.length > 0 && (
+								<div className="alert bg-gray-700 mt-4 border border-gray-600">
+									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-emerald-400 shrink-0 w-6 h-6">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+									</svg>
+									<span className="text-gray-200">
+										Found <span className="text-emerald-400 font-bold">{data.parking_spots.length}</span> parking locations
+										{data.parking_spots.filter(spot => spot.is_edge_location).length > 0 && (
+											<> including <span className="text-red-400 font-bold">{data.parking_spots.filter(spot => spot.is_edge_location).length}</span> edge locations</>
+										)}
+									</span>
+								</div>
+							)}
 						</div>
 					</motion.div>
-				</div>
+				)}
+				
+				{activeTab === 'heatmap' && (
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+						<motion.div 
+							className="card bg-gray-800 shadow-xl border border-gray-700"
+							initial={{ opacity: 0, x: -20 }}
+							animate={{ opacity: 1, x: 0 }}
+							transition={{ duration: 0.3, delay: 0.1 }}
+						>
+							<div className="card-body">
+								<h2 className="card-title text-white">Top Hotspots</h2>
+								
+								<div className="overflow-x-auto">
+									<table className="table bg-gray-700 text-gray-200">
+										<thead className="text-gray-200">
+											<tr>
+												<th>Rank</th>
+												<th>Area</th>
+												<th>Intensity</th>
+											</tr>
+										</thead>
+										<tbody>
+											{getTopHotspots().slice(0, 5).map((area, index) => (
+												<tr key={index} className="hover:bg-gray-600">
+													<td className="text-white">#{index + 1}</td>
+													<td>{area}</td>
+													<td>
+														<progress 
+															className="progress bg-gray-600" 
+															style={{ 
+																color: index === 0 ? "#ef4444" : 
+																	   index === 1 ? "#f97316" : 
+																	   index === 2 ? "#f59e0b" : 
+																	   index === 3 ? "#eab308" : "#facc15" 
+															}} 
+															value={100 - (index * 20)} 
+															max="100"
+														></progress>
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</motion.div>
+						
+						<motion.div 
+							className="card bg-gray-800 shadow-xl border border-gray-700"
+							initial={{ opacity: 0, x: 20 }}
+							animate={{ opacity: 1, x: 0 }}
+							transition={{ duration: 0.3, delay: 0.2 }}
+						>
+							<div className="card-body">
+								<h2 className="card-title text-white">Secondary Hotspots</h2>
+								
+								<div className="overflow-x-auto">
+									<table className="table bg-gray-700 text-gray-200">
+										<thead className="text-gray-200">
+											<tr>
+												<th>Rank</th>
+												<th>Area</th>
+												<th>Intensity</th>
+											</tr>
+										</thead>
+										<tbody>
+											{getTopHotspots().slice(5).map((area, index) => (
+												<tr key={index} className="hover:bg-gray-600">
+													<td className="text-white">#{index + 6}</td>
+													<td>{area}</td>
+													<td>
+														<progress 
+															className="progress bg-gray-600" 
+															style={{ 
+																color: "#facc15" 
+															}} 
+															value={30 - (index * 10)} 
+															max="100"
+														></progress>
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+								
+								<div className="divider bg-gray-700"></div>
+								
+								<h3 className="font-bold text-white">Current Time Block: {timeOfDay}</h3>
+								<h3 className="font-bold text-white">Hour: {getHourFromTime(timeOfDay)}</h3>
+							</div>
+						</motion.div>
+					</div>
+				)}
+				
+				{activeTab === 'parking' && (
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+						<motion.div 
+							className="card bg-gray-800 shadow-xl border border-gray-700"
+							initial={{ opacity: 0, x: -20 }}
+							animate={{ opacity: 1, x: 0 }}
+							transition={{ duration: 0.3, delay: 0.1 }}
+						>
+							<div className="card-body">
+								<h2 className="card-title text-white">Edge Parking Locations</h2>
+								
+								<div className="overflow-x-auto">
+									<table className="table bg-gray-700 text-gray-200">
+										<thead className="text-gray-200">
+											<tr>
+												<th>Name</th>
+												<th>Distance</th>
+												<th>Rating</th>
+											</tr>
+										</thead>
+										<tbody>
+											{data.parking_spots.filter(spot => spot.is_edge_location).slice(0, 5).map((spot, index) => (
+												<tr key={index} className="hover:bg-gray-600">
+													<td>{spot.name || 'Unnamed Parking'}</td>
+													<td>{spot.walking_info?.distance || 'N/A'}</td>
+													<td>
+														<div className="flex items-center">
+															<span className="text-yellow-400 mr-1">★</span>
+															<span>{spot.rating || 'N/A'}</span>
+														</div>
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</motion.div>
+						
+						<motion.div 
+							className="card bg-gray-800 shadow-xl border border-gray-700"
+							initial={{ opacity: 0, x: 20 }}
+							animate={{ opacity: 1, x: 0 }}
+							transition={{ duration: 0.3, delay: 0.2 }}
+						>
+							<div className="card-body">
+								<h2 className="card-title text-white">Regular Parking Locations</h2>
+								
+								<div className="overflow-x-auto">
+									<table className="table bg-gray-700 text-gray-200">
+										<thead className="text-gray-200">
+											<tr>
+												<th>Name</th>
+												<th>Distance</th>
+												<th>Rating</th>
+											</tr>
+										</thead>
+										<tbody>
+											{data.parking_spots.filter(spot => !spot.is_edge_location).slice(0, 5).map((spot, index) => (
+												<tr key={index} className="hover:bg-gray-600">
+													<td>{spot.name || 'Unnamed Parking'}</td>
+													<td>{spot.walking_info?.distance || 'N/A'}</td>
+													<td>
+														<div className="flex items-center">
+															<span className="text-yellow-400 mr-1">★</span>
+															<span>{spot.rating || 'N/A'}</span>
+														</div>
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</motion.div>
+					</div>
+				)}
 			</div>
 		</div>
 	)

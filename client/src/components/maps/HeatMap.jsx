@@ -38,7 +38,7 @@ export default function HeatMap({ hourlyRecommendations, blockRecommendations, d
 		
 		const results = await Promise.all(coordsPromises)
 		return results.filter(result => result !== null)
-	};
+	}
 	
 	useEffect(() => {
 		const getCoordinates = async () => {
@@ -70,60 +70,61 @@ export default function HeatMap({ hourlyRecommendations, blockRecommendations, d
 		}
 		
 		try {
-		map.current = new mapboxgl.Map({
-			container: mapContainer.current,
-			style: 'mapbox://styles/mapbox/dark-v11',
-			center: [driverLocation.lng, driverLocation.lat],
-			zoom: 10
-		})
-		
-		try {
-			map.current.on('load', () => {
-			new mapboxgl.Marker({ color: '#22c55e' })
-				.setLngLat([driverLocation.lng, driverLocation.lat])
-				.setPopup(new mapboxgl.Popup().setHTML('<h3>Your Location</h3>'))
-				.addTo(map.current)
-			
-			locationCoords.forEach((location, index) => {
-				const isTopRecommendation = location.name === topRecommendation
-				const hourlyIndex = hourlyRecommendations.indexOf(location.name)
-				const blockIndex = blockRecommendations.indexOf(location.name)
-				
-				let radius = 1.0
-				let color = '#facc15'
-				
-				if (isTopRecommendation) {
-					radius = 1.0
-					color = '#ef4444'  // Dark red
-				} else if (hourlyIndex !== -1) {
-					radius = 1.0 - (hourlyIndex * 0.15)
-					
-					if (hourlyIndex === 0) color = '#ef4444'      // Dark red
-					else if (hourlyIndex === 1) color = '#f97316' // Orange
-					else if (hourlyIndex === 2) color = '#f59e0b' // Amber
-					else if (hourlyIndex === 3) color = '#eab308' // Yellow
-					else color = '#facc15'                        // Light yellow
-				} else if (blockIndex !== -1) {
-					radius = 0.8 - (blockIndex * 0.1)
-					
-					if (blockIndex === 0) color = '#ef4444'      // Dark red
-					else if (blockIndex === 1) color = '#f97316' // Orange
-					else if (blockIndex === 2) color = '#f59e0b' // Amber
-					else if (blockIndex === 3) color = '#eab308' // Yellow
-					else color = '#facc15'                       // Light yellow
-				}
-				
-				createHeatZone(location, radius, color, isTopRecommendation)
+			map.current = new mapboxgl.Map({
+				container: mapContainer.current,
+				style: 'mapbox://styles/mapbox/dark-v11',
+				center: [driverLocation.lng, driverLocation.lat],
+				zoom: 10
 			})
 			
-			addLegend()
-		})
-			} catch (err) {
-				console.error('Error setting up map:', err)
-			}
+			map.current.on('load', () => {
+				new mapboxgl.Marker({ color: '#22c55e' })
+					.setLngLat([driverLocation.lng, driverLocation.lat])
+					.setPopup(new mapboxgl.Popup().setHTML('<h3>Your Location</h3>'))
+					.addTo(map.current)
+				
+				locationCoords.forEach((location) => {
+					const isTopRecommendation = location.name === topRecommendation
+					const hourlyIndex = hourlyRecommendations.indexOf(location.name)
+					const blockIndex = blockRecommendations.indexOf(location.name)
+					
+					let radiusKm = 1.0
+					let radiusSmall = 0.25
+					let color = '#facc15'
+					
+					if (isTopRecommendation) {
+						radiusKm = 1.0
+						radiusSmall = 0.25
+						color = '#ef4444'  // Dark red
+					} else if (hourlyIndex !== -1) {
+						radiusKm = 1.0 - (hourlyIndex * 0.1)
+						radiusSmall = 0.25 - (hourlyIndex * 0.03)
+						
+						if (hourlyIndex === 0) color = '#ef4444'      // Dark red
+						else if (hourlyIndex === 1) color = '#f97316' // Orange
+						else if (hourlyIndex === 2) color = '#f59e0b' // Amber
+						else if (hourlyIndex === 3) color = '#eab308' // Yellow
+						else color = '#facc15'                        // Light yellow
+					} else if (blockIndex !== -1) {
+						radiusKm = 0.8 - (blockIndex * 0.1)
+						radiusSmall = 0.2 - (blockIndex * 0.02)
+						
+						if (blockIndex === 0) color = '#ef4444'      // Dark red
+						else if (blockIndex === 1) color = '#f97316' // Orange
+						else if (blockIndex === 2) color = '#f59e0b' // Amber
+						else if (blockIndex === 3) color = '#eab308' // Yellow
+						else color = '#facc15'                       // Light yellow
+					}
+					
+					createHeatZone(location, radiusKm, color, isTopRecommendation, 0.3)
+					createHeatZone(location, radiusSmall, color, isTopRecommendation, 0.7)
+				})
+				
+				addLegend()
+			})
 		} catch (err) {
 			console.error('Error setting up map:', err)
-		};
+		}
 		
 		return () => {
 			if (map.current) {
@@ -142,10 +143,10 @@ export default function HeatMap({ hourlyRecommendations, blockRecommendations, d
 					console.error('Error removing legend:', err)
 				}
 			}
-		};
-	}, [isLoading, locationCoords])
+		}
+	}, [isLoading, locationCoords, driverLocation])
 	
-	const createHeatZone = (location, radiusKm, color, isTopRecommendation) => {
+	const createHeatZone = (location, radiusKm, color, isTopRecommendation, opacity = 0.5) => {
 		const radiusInDegrees = radiusKm / 111.32  // Rough conversion from km to degrees at equator
 		const center = [location.lng, location.lat]
 		const points = 64
@@ -159,7 +160,7 @@ export default function HeatMap({ hourlyRecommendations, blockRecommendations, d
 		}
 		coords.push(coords[0])
 		
-		const sourceId = `zone-${location.name.replace(/\s+/g, '-').toLowerCase()}`
+		const sourceId = `zone-${location.name.replace(/\s+/g, '-').toLowerCase()}-${radiusKm}`
 		
 		map.current.addSource(sourceId, {
 			'type': 'geojson',
@@ -183,7 +184,7 @@ export default function HeatMap({ hourlyRecommendations, blockRecommendations, d
 			'layout': {},
 			'paint': {
 				'fill-color': color,
-				'fill-opacity': 0.5
+				'fill-opacity': opacity
 			}
 		})
 		
@@ -194,30 +195,33 @@ export default function HeatMap({ hourlyRecommendations, blockRecommendations, d
 			'layout': {},
 			'paint': {
 				'line-color': color,
-				'line-width': isTopRecommendation ? 3 : 2
+				'line-width': isTopRecommendation ? 2 : 1,
+				'line-opacity': 0.8
 			}
 		})
 		
-		map.current.addLayer({
-			'id': `${sourceId}-label`,
-			'type': 'symbol',
-			'source': sourceId,
-			'layout': {
-				'text-field': ['get', 'name'],
-				'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-				'text-size': isTopRecommendation ? 16 : 12,
-				'text-anchor': 'center',
-				'text-justify': 'center',
-				'text-offset': [0, 0]
-			},
-			'paint': {
-				'text-color': '#ffffff',
-				'text-halo-color': '#000000',
-				'text-halo-width': 1
-			}
-		})
+		if (radiusKm > 0.5) {
+			map.current.addLayer({
+				'id': `${sourceId}-label`,
+				'type': 'symbol',
+				'source': sourceId,
+				'layout': {
+					'text-field': ['get', 'name'],
+					'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+					'text-size': isTopRecommendation ? 16 : 12,
+					'text-anchor': 'center',
+					'text-justify': 'center',
+					'text-offset': [0, 0]
+				},
+				'paint': {
+					'text-color': '#ffffff',
+					'text-halo-color': '#000000',
+					'text-halo-width': 1
+				}
+			})
+		}
 		
-		if (isTopRecommendation) {
+		if (isTopRecommendation && radiusKm > 0.5) {
 			new mapboxgl.Marker({ color: '#ef4444' })
 				.setLngLat(center)
 				.setPopup(
