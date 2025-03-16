@@ -16,9 +16,6 @@ crafted with <span style="color: #8b0000;">&hearts;</span> by your besties <a hr
 </p>
 <br>
 
-
-## Our team emerged victorious at the hackathon! 😄 
-
 **************************
 
 ### Team Participants
