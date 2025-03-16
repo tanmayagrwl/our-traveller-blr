@@ -18,6 +18,10 @@ export default function ParkingMap({ parkingSpots = [], driverLocation }) {
 			return
 		}
 		
+		if (activeTab !== 'map') {
+			return
+		}
+		
 		if (map.current) {
 			try {
 				map.current?.remove()
@@ -247,9 +251,19 @@ export default function ParkingMap({ parkingSpots = [], driverLocation }) {
 				}
 			}
 		}
-	}, [parkingSpots, driverLocation])
+	}, [parkingSpots, driverLocation, activeTab])
 	
 	const addLegend = () => {
+		// Remove any existing legend first
+		try {
+			const existingLegend = document.querySelector('.parking-map-legend')
+			if (existingLegend && existingLegend.parentNode) {
+				existingLegend.parentNode.removeChild(existingLegend)
+			}
+		} catch (err) {
+			console.error('Error removing existing legend:', err)
+		}
+		
 		const legend = document.createElement('div')
 		legend.className = 'parking-map-legend'
 		legend.style.position = 'absolute'
@@ -341,7 +355,7 @@ export default function ParkingMap({ parkingSpots = [], driverLocation }) {
 				
 				{activeTab === 'map' && (
 					<div className="h-[64vh]">
-						<div className="w-full h-full relative" ref={mapContainer} />
+						<div className="w-full h-full relative" id="map-container" ref={mapContainer} />
 					</div>
 				)}
 				
