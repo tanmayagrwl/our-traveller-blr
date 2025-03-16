@@ -33,6 +33,18 @@ export default function DriverHeatmap() {
 	const [driverLocation, setDriverLocation] = useState({ lat: 12.9716, lng: 77.5946 })
 
 	useEffect(() => {
+		if (navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition((position) => {
+				setDriverLocation({
+					lat: position.coords.latitude,
+					lng: position.coords.longitude
+				})
+			})
+		}
+	}, [])
+
+
+	useEffect(() => {
 		const fetchData = async () => {
 			try {
 				setIsLoading(true)
@@ -97,7 +109,7 @@ export default function DriverHeatmap() {
 
 	const getTopHotspots = () => {
 		if (!data.hotspots || data.hotspots.length === 0) return []
-		const topHotspots = data.hotspots.slice(0, 7)
+		const topHotspots = data.hotspots
 		return topHotspots.map(hotspot => hotspot.location)
 	}
 	
@@ -150,41 +162,14 @@ export default function DriverHeatmap() {
 						<div className="card-body">
 							<div className="flex flex-wrap items-center justify-between mb-4">
 								<h2 className="card-title text-white">Hotspot Heatmap</h2>
-								
-								<div className="form-control">
-									<div className="join">
-										<motion.button 
-											className={`btn join-item ${timeOfDay === 'morning' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-200'}`}
-											onClick={() => handleTimeChange('morning')}
-											whileHover={{ scale: 1.05 }}
-											whileTap={{ scale: 0.95 }}
-										>
-											Morning (8-10 AM)
-										</motion.button>
-										<motion.button 
-											className={`btn join-item ${timeOfDay === 'afternoon' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-200'}`}
-											onClick={() => handleTimeChange('afternoon')}
-											whileHover={{ scale: 1.05 }}
-											whileTap={{ scale: 0.95 }}
-										>
-											Afternoon (1-3 PM)
-										</motion.button>
-										<motion.button 
-											className={`btn join-item ${timeOfDay === 'evening' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-200'}`}
-											onClick={() => handleTimeChange('evening')}
-											whileHover={{ scale: 1.05 }}
-											whileTap={{ scale: 0.95 }}
-										>
-											Evening (5-8 PM)
-										</motion.button>
-									</div>
-								</div>
+								<h3 className="text-white text-sm">Time Block: {timeOfDay}</h3>
+								<p className="text-white text-sm">This is a heatmap of the most popular areas in the city at the current time block.</p>
 							</div>
 							
 							<div className="h-[70vh] w-full rounded-lg overflow-hidden">
 								<HeatMap 
-									hourlyRecommendations={getTopHotspots().slice(1, 5)} 
-									blockRecommendations={getTopHotspots().slice(5)}
+									hourlyRecommendations={getTopHotspots()} 
+									blockRecommendations={getTopHotspots()}
 									driverLocation={driverLocation}
 									topRecommendation={getTopHotspot()}
 								/>
