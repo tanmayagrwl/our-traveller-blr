@@ -25,6 +25,11 @@ const RideMap = ({
   const [isDriverMoving, setIsDriverMoving] = useState(false)
   const [isMapUpdating, setIsMapUpdating] = useState(false)
 
+  // Debug bookingStep changes
+  useEffect(() => {
+    console.log('Booking step changed to:', bookingStep)
+  }, [bookingStep])
+
   // Prevent map updates during typing
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -119,6 +124,10 @@ const RideMap = ({
       routeRef.current = null
     }
     
+    // Remove any existing destination labels
+    const oldLabels = mapRef.current.querySelectorAll('.destination-label')
+    oldLabels.forEach(label => label.parentNode.removeChild(label))
+    
     // Create new destination marker and route if destination exists
     if (showRouteEstimate && destinationInputRef.current) {
       // Create destination marker
@@ -141,7 +150,7 @@ const RideMap = ({
       
       // Create destination label
       const destLabel = document.createElement('div')
-      destLabel.className = 'absolute bg-gray-800 text-white text-xs py-1 px-2 rounded shadow-lg z-30 whitespace-nowrap'
+      destLabel.className = 'absolute bg-gray-800 text-white text-xs py-1 px-2 rounded shadow-lg z-30 whitespace-nowrap destination-label'
       destLabel.style.left = `${destX}%`
       destLabel.style.top = `${destY - 6}%`
       destLabel.style.transform = 'translate(-50%, -100%)'
@@ -188,6 +197,8 @@ const RideMap = ({
   useEffect(() => {
     if (!mapLoaded || !driverLocation) return
     
+    console.log('Driver location updated:', driverLocation)
+    
     // Calculate heading if we have previous location
     if (previousDriverLocation) {
       const dx = driverLocation.lng - previousDriverLocation.lng
@@ -205,8 +216,14 @@ const RideMap = ({
     
     setPreviousDriverLocation(driverLocation)
     
-    // Create driver marker if it doesn't exist
-    if (!driverMarkerRef.current && mapRef.current) {
+    // Remove existing driver marker if it exists
+    if (driverMarkerRef.current && driverMarkerRef.current.parentNode) {
+      driverMarkerRef.current.parentNode.removeChild(driverMarkerRef.current)
+      driverMarkerRef.current = null
+    }
+    
+    // Create driver marker
+    if (mapRef.current) {
       driverMarkerRef.current = document.createElement('div')
       driverMarkerRef.current.className = 'absolute z-40'
       driverMarkerRef.current.innerHTML = `
@@ -223,7 +240,7 @@ const RideMap = ({
       
       // Add animation styles
       const style = document.createElement('style')
-      style.textContent = `
+      style.innerHTML = `
         @keyframes pulse {
           0% { transform: scale(0.8) translate(-6px, -6px); opacity: 0.7; }
           70% { transform: scale(1.3) translate(-6px, -6px); opacity: 0; }
@@ -318,14 +335,23 @@ const RideMap = ({
         driverMarkerRef.current.parentNode.removeChild(driverMarkerRef.current)
         driverMarkerRef.current = null
       }
+      
+      // Remove any existing overlays
+      const overlays = mapRef.current.querySelectorAll('.map-overlay')
+      overlays.forEach(overlay => overlay.parentNode.removeChild(overlay))
+      
     } else if (bookingStep === 2 && destinationInputRef.current) {
       // Destination selection
       updateDestinationMarker()
+      
     } else if (bookingStep === 3) {
-      // Searching animation
+      // Searching animation - remove any existing overlays first
+      const oldOverlays = mapRef.current.querySelectorAll('.map-overlay')
+      oldOverlays.forEach(overlay => overlay.parentNode.removeChild(overlay))
+      
       if (mapRef.current) {
         const searchingOverlay = document.createElement('div')
-        searchingOverlay.className = 'absolute inset-0 bg-black bg-opacity-20 z-50 flex items-center justify-center'
+        searchingOverlay.className = 'absolute inset-0 bg-black bg-opacity-20 z-50 flex items-center justify-center map-overlay'
         searchingOverlay.innerHTML = `
           <div class="bg-gray-800 bg-opacity-80 px-6 py-4 rounded-xl border border-gray-700">
             <div class="flex items-center space-x-3">
@@ -335,18 +361,28 @@ const RideMap = ({
           </div>
         `
         mapRef.current.appendChild(searchingOverlay)
-        
-        return () => {
-          if (searchingOverlay && searchingOverlay.parentNode) {
-            searchingOverlay.parentNode.removeChild(searchingOverlay)
-          }
-        }
       }
+      
     } else if (bookingStep === 4) {
+      // Remove search overlay if it exists
+      const searchOverlays = mapRef.current.querySelectorAll('.map-overlay')
+      searchOverlays.forEach(overlay => overlay.parentNode.removeChild(overlay))
+      
       // Show driver and route
       updateDestinationMarker()
+      
+      // If we have a driverLocation but no driver marker, force update
+      if (driverLocation && (!driverMarkerRef.current || !driverMarkerRef.current.parentNode)) {
+        console.log('Forcing driver marker update in step 4')
+        // Reset driver marker to force re-creation
+        if (driverMarkerRef.current && driverMarkerRef.current.parentNode) {
+          driverMarkerRef.current.parentNode.removeChild(driverMarkerRef.current)
+        }
+        driverMarkerRef.current = null
+        setPreviousDriverLocation(null)
+      }
     }
-  }, [bookingStep, mapLoaded])
+  }, [bookingStep, mapLoaded, driverLocation])
   
   // Ensure destination marker is updated when showRouteEstimate changes
   useEffect(() => {

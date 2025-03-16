@@ -51,7 +51,7 @@ export const DriverDashboard = {
       level: "Gold",
       points: 70,
       nextLevel: "Platinum",
-      pointsToNextLevel: 30,
+      pointsToNextLevel: 10,
       badges: [
         { name: "Peak Hero", type: "primary" },
         { name: "Weekend Warrior", type: "secondary" },

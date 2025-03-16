@@ -143,7 +143,7 @@ export const mockDriverProfile = {
 	joiningDate: 'Jan 2023',
 	tier: 'Gold',
 	nextTier: 'Platinum',
-	progress: 70,
+	progress: 110,
 	totalPoints: 785,
 	badges: [
 		'Peak Hero',
@@ -335,7 +335,7 @@ export const mockCarpoolMatches = [
 		timeOffset: 15, 
 		passengers: 2,
 		maxPassengers: 4,
-		fare: 70,
+		fare: 110,
 		regularFare: 150,
 		pickupDistance: 0.3,
 		dropoffDistance: 0.4,

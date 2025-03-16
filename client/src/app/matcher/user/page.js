@@ -10,7 +10,7 @@ import RideMap from '@/components/maps/RideMap'
 export default function UserDashboard() {
 	// User state
 	const [userData, setUserData] = useState(mockUsers[0])
-	const [userId, setUserId] = useState('u-20456') // Default to first user
+	const [userId, setUserId] = useState(mockUsers[0].id)
 	const [pickupTime, setPickupTime] = useState('18:30')
 	const [isRequesting, setIsRequesting] = useState(false)
 	const [activeBooking, setActiveBooking] = useState(null)

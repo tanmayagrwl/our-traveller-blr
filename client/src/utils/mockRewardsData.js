@@ -245,28 +245,28 @@ export const mockRewardsData = {
 	brandCollaborations: [
 		{
 			id: 'brand1',
-			name: 'Shell Bangalore',
+			name: 'Petrol Pump Bangalore',
 			description: '12% discount at all participating stations',
 			category: 'Fuel Partner Discounts',
 			logo: '/api/placeholder/64/64'
 		},
 		{
 			id: 'brand2',
-			name: 'Bosch Service Koramangala',
+			name: 'Car Service Koramangala',
 			description: '15% off on all services',
 			category: 'Vehicle Maintenance',
 			logo: '/api/placeholder/64/64'
 		},
 		{
 			id: 'brand3',
-			name: 'Third Wave Coffee Indiranagar',
+			name: 'Coffee Indiranagar',
 			description: 'Buy 1 Get 1 Free on weekdays',
 			category: 'Food & Refreshments',
 			logo: '/api/placeholder/64/64'
 		},
 		{
 			id: 'brand4',
-			name: 'Apollo HSR Layout',
+			name: 'Hospital HSR Layout',
 			description: 'Free health check-ups',
 			category: 'Healthcare',
 			logo: '/api/placeholder/64/64'

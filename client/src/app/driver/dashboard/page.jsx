@@ -6,6 +6,9 @@ import RideMap from '@/components/maps/RideMap'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DriverDashboard as dashboardData } from '@/utils/response/driver/dashboard'
 import useSocket from '@/hooks/useSocket'
+import dynamic from "next/dynamic";
+
+const LottieAnimation = dynamic(() => import("@/components/driver/LottieAnimation"), { ssr: false });
 
 export default function DriverDashboard() {
 	// Core state
@@ -14,13 +17,57 @@ export default function DriverDashboard() {
 	const [activeRide, setActiveRide] = useState(null)
 	const [driverId] = useState('driver-' + Math.floor(Math.random() * 10000))
 	
+	// Level-up modal state
+	const [showLevelUpModal, setShowLevelUpModal] = useState(false)
+	const [levelUpInfo, setLevelUpInfo] = useState({
+		newLevel: 'Gold1',
+        offers: [
+            {
+                title: 'Reduced Commission',
+                description: 'Enjoy a 5% reduction in commission rates for the next week',
+                icon: '💰'
+            },
+            {
+                title: 'Priority Matching',
+                description: 'Get priority in ride matching for premium customers',
+                icon: '⭐'
+            },
+            {
+                title: 'Fuel Discount',
+                description: '₹200 off on your next fuel purchase at partner stations',
+                icon: '⛽'
+            },
+            {
+                title: 'Maintenance Offer',
+                description: '20% off on vehicle servicing at authorized centers',
+                icon: '🔧'
+            }
+        ]
+})
+	
 	// WebSocket connection
 	const { isConnected, lastMessage, sendMessage } = useSocket('ws://localhost:5000')
+	
+	// Register driver with server when connected
+	useEffect(() => {
+		if (isConnected) {
+			// Send initial status update to register driver
+			sendMessage({
+				type: 'driver_status',
+				driverId,
+				isAvailable,
+				location: driverData.location.current,
+				timestamp: new Date().toISOString()
+			})
+			console.log('Driver registered with server:', driverId)
+		}
+	}, [isConnected, driverId, sendMessage, driverData.location.current, isAvailable])
 	
 	// Handle WebSocket messages
 	useEffect(() => {
 		if (!lastMessage) return
 		
+		console.log('Received WebSocket message:', lastMessage)
 		const { type } = lastMessage
 		
 		switch (type) {
@@ -28,7 +75,7 @@ export default function DriverDashboard() {
 				if (isAvailable) {
 					// Add new ride request from WebSocket
 					const newRide = {
-						id: lastMessage.userId || lastMessage.rideId || Math.floor(Math.random() * 1000),
+						id: lastMessage.rideId || lastMessage.userId || Math.floor(Math.random() * 1000),
 						pickupLocation: lastMessage.pickupLocation,
 						dropLocation: {
 							lat: driverData.location.current.lat + (Math.random() * 0.05 - 0.025),
@@ -41,13 +88,16 @@ export default function DriverDashboard() {
 						passengerName: lastMessage.userName || `User ${Math.floor(Math.random() * 100)}`,
 						timestamp: lastMessage.timestamp || new Date().toISOString(),
 						rewardPoints: 20,
-						destination: lastMessage.destination
+						destination: lastMessage.destination,
+						userId: lastMessage.userId
 					}
 					
 					setDriverData(prev => ({
 						...prev,
 						activeRides: [...prev.activeRides, newRide]
 					}))
+					
+					console.log('New ride request added:', newRide)
 				}
 				break
 				
@@ -75,7 +125,7 @@ export default function DriverDashboard() {
 		}
 	}, [lastMessage, isAvailable, driverData.location.current, activeRide])
 	
-	// Update driver availability status on WebSocket and when status changes
+	// Update driver availability status when it changes
 	useEffect(() => {
 		if (isConnected) {
 			sendMessage({
@@ -85,6 +135,7 @@ export default function DriverDashboard() {
 				location: driverData.location.current,
 				timestamp: new Date().toISOString()
 			})
+			console.log('Driver status updated:', isAvailable ? 'available' : 'busy')
 		}
 	}, [isAvailable, isConnected, sendMessage, driverId, driverData.location.current])
 	
@@ -100,19 +151,78 @@ export default function DriverDashboard() {
 	// Accept a ride request
 	const acceptRide = (ride) => {
 		// Send acceptance to WebSocket
-		sendMessage({
-			type: 'driver_accepted',
-			rideId: ride.id,
-			driverId,
-			driver: {
+		if (isConnected) {
+			const driverInfo = {
 				name: driverData.name || 'Rahul K.',
 				rating: driverData.rating || 4.8,
 				rides: driverData.totalRides || '1240+',
 				vehicleNumber: driverData.vehicleNumber || 'KA 01 AB 1234',
 				vehicleType: driverData.vehicleType || 'White Auto'
-			},
-			estimatedArrival: 5
-		})
+			}
+			
+			sendMessage({
+				type: 'driver_accepted',
+				rideId: ride.id,
+				driverId,
+				driver: driverInfo,
+				estimatedArrival: 5,
+				userId: ride.userId
+			})
+			
+			console.log('Sent driver acceptance to server:', {
+				rideId: ride.id,
+				driverId,
+				driver: driverInfo
+			})
+		}
+		
+		// Add reward points from ride
+		const updatedPoints = driverData.rewards.points + ride.rewardPoints + 20
+		const pointsToNextLevel = driverData.rewards.pointsToNextLevel + 10
+		
+		// Check if driver has leveled up
+		const hasLeveledUp = updatedPoints >= 100
+		let newLevel = driverData.rewards.level
+		let newPointsToNextLevel = pointsToNextLevel
+		let newPoints = updatedPoints
+		
+		if (hasLeveledUp) {
+			// Calculate new level
+			newLevel = driverData.rewards.level + 1
+			newPoints = updatedPoints - 100 // Reset points after level up
+			newPointsToNextLevel = 100 // Set new points goal for next level
+			
+			// Set level up info for modal
+			setLevelUpInfo({
+				newLevel,
+				offers: [
+					{
+						title: 'Reduced Commission',
+						description: 'Enjoy a 5% reduction in commission rates for the next week',
+						icon: '💰'
+					},
+					{
+						title: 'Priority Matching',
+						description: 'Get priority in ride matching for premium customers',
+						icon: '⭐'
+					},
+					{
+						title: 'Fuel Discount',
+						description: '₹200 off on your next fuel purchase at partner stations',
+						icon: '⛽'
+					},
+					{
+						title: 'Maintenance Offer',
+						description: '20% off on vehicle servicing at authorized centers',
+						icon: '🔧'
+					}
+				],
+				lottieAnimationPath: '/animations/level-up.json' // You can customize this path based on level
+			})
+			
+			// Show the level up modal
+			setShowLevelUpModal(true)
+		}
 		
 		setActiveRide(ride)
 		setDriverData(prev => ({
@@ -125,6 +235,12 @@ export default function DriverDashboard() {
 					completedRides: prev.stats.daily.completedRides + 1,
 					earnings: prev.stats.daily.earnings + ride.estimatedFare
 				}
+			},
+			rewards: {
+				...prev.rewards,
+				points: newPoints,
+				pointsToNextLevel: newPointsToNextLevel,
+				level: newLevel
 			}
 		}))
 		setIsAvailable(false)
@@ -139,11 +255,13 @@ export default function DriverDashboard() {
 	// Decline a ride request
 	const declineRide = (rideId) => {
 		// Send decline to WebSocket
-		sendMessage({
-			type: 'driver_declined',
-			rideId,
-			driverId
-		})
+		if (isConnected) {
+			sendMessage({
+				type: 'driver_declined',
+				rideId,
+				driverId
+			})
+		}
 		
 		setDriverData(prev => ({
 			...prev,
@@ -298,7 +416,7 @@ export default function DriverDashboard() {
 										</div>
 										<div className="ml-4 flex-1">
 											<div className="flex items-center justify-between">
-												<p className="font-bold text-white">{driverData.rewards.level} Level</p>
+												<p className="font-bold text-white">Level {driverData.rewards.level}</p>
 												<p className="text-xs text-gray-400">{driverData.rewards.points}/{driverData.rewards.points + driverData.rewards.pointsToNextLevel}</p>
 											</div>
 											<div className="w-full bg-gray-700 rounded-full h-2 mt-2">
@@ -504,6 +622,87 @@ export default function DriverDashboard() {
 					</div>
 				</div>
 			</div>
+			
+			{/* DaisyUI Level Up Modal */}
+			<AnimatePresence>
+				{showLevelUpModal && (
+					<div className="modal modal-open">
+						<motion.div 
+							className="modal-box bg-gray-900 border-2 border-emerald-500 max-w-4xl p-0 overflow-hidden"
+							initial={{ scale: 0.9, opacity: 0 }}
+							animate={{ scale: 1, opacity: 1 }}
+							exit={{ scale: 0.9, opacity: 0 }}
+							transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+						>
+							<div className="grid grid-cols-2">
+								<div className="bg-gradient-to-br from-emerald-900 to-gray-900 flex items-center justify-center p-6">
+									<div className="w-full h-full flex items-center justify-center">
+										<LottieAnimation />
+									</div>
+								</div>
+								
+								<div className="p-8 relative">
+									<div className="absolute top-3 right-3">
+										<button 
+											className="btn btn-sm btn-circle bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+											onClick={() => setShowLevelUpModal(false)}
+										>
+											✕
+										</button>
+									</div>
+									
+									<div className="flex justify-center">
+										<div className="h-24 w-24 bg-emerald-500 rounded-full flex items-center justify-center ring-8 ring-gray-900">
+											<span className="text-4xl">🏆</span>
+										</div>
+									</div>
+									
+									<h3 className="font-extrabold text-3xl text-center text-white mt-4">Level Up!</h3>
+									<div className="py-3">
+										<p className="text-center text-gray-300 mb-5">Congratulations! You've reached Level {levelUpInfo.newLevel}</p>
+										
+										<div className="divider divider-neutral before:bg-emerald-500/20 after:bg-emerald-500/20">
+											<span className="font-bold text-emerald-400">UNLOCKED REWARDS</span>
+										</div>
+										
+										<div className="grid grid-cols-1 gap-4 mt-5">
+											{levelUpInfo.offers.map((offer, index) => (
+												<motion.div 
+													key={index}
+													className="bg-gray-800 border border-gray-700 p-4 rounded-lg flex items-center"
+													initial={{ opacity: 0, y: 20 }}
+													animate={{ opacity: 1, y: 0 }}
+													transition={{ delay: 0.3 + (index * 0.1) }}
+												>
+													<div className="bg-emerald-900/40 w-12 h-12 rounded-lg flex items-center justify-center text-2xl mr-4">
+														{offer.icon}
+													</div>
+													<div className="flex-1">
+														<h4 className="font-bold text-white">{offer.title}</h4>
+														<p className="text-gray-400 text-sm">{offer.description}</p>
+													</div>
+												</motion.div>
+											))}
+										</div>
+										
+										<div className="mt-6">
+											<motion.button 
+												className="btn btn-lg bg-emerald-500 hover:bg-emerald-600 text-white border-0 rounded-lg w-full"
+												whileHover={{ scale: 1.05 }}
+												whileTap={{ scale: 0.95 }}
+												onClick={() => setShowLevelUpModal(false)}
+											>
+												Awesome!
+											</motion.button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</motion.div>
+						<div className="modal-backdrop bg-black/70" onClick={() => setShowLevelUpModal(false)}></div>
+					</div>
+				)}
+			</AnimatePresence>
 		</div>
 	)
 }

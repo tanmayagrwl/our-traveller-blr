@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-    title: 'Namma Yatri - Peak-Hour Demand Optimizer',
+    title: 'Our Traveller - Peak-Hour Demand Optimizer',
     description: 'Solving peak-hour demand imbalance and reducing ride denials',
   }
   
