@@ -195,7 +195,7 @@ export default function UserDashboard() {
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-blue-400 shrink-0 w-6 h-6">
                                         {mockIcons.info}
                                     </svg>
-                                    <span className="text-blue-100">Surge pricing in effect. Consider carpooling to save 30%!</span>
+                                    <span className="text-blue-100">Surge pricing in effect. Consider using shuttles to save 30%!</span>
                                 </div>
                             </div>
                         </motion.div>

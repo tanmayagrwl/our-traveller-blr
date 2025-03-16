@@ -236,15 +236,6 @@ export default function UserDashboard() {
                 
                 <div className="flex justify-between gap-4">
                   <motion.button 
-                    className="btn bg-purple-600 text-white hover:bg-purple-700 border-none flex-1 font-bold py-3"
-                    onClick={() => router.push('/user/carpooling')}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Carpooling
-                  </motion.button>
-                  
-                  <motion.button 
                     className="btn bg-blue-600 text-white hover:bg-blue-700 border-none flex-1 font-bold py-3"
                     onClick={() => router.push('/user/shuttle')}
                     whileHover={{ scale: 1.02 }}
