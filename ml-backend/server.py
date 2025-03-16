@@ -1029,7 +1029,7 @@ def api_get_recommendations_with_parking():
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
-        description="Namma Yatri Location Recommender API Server"
+        description="Our Traveller Location Recommender API Server"
     )
     parser.add_argument(
         "--host", type=str, default="0.0.0.0", help="Host to run the server on"

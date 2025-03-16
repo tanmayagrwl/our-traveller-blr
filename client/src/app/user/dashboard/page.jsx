@@ -79,7 +79,7 @@ export default function UserDashboard() {
     const interval = setInterval(updateStats, 30000)
     
     return () => clearInterval(interval)
-  }, [isConnected, sendMessage, userId, userLocation])
+  }, [isConnected, sendMessage, userId])
   
   // Handle WebSocket messages
   useEffect(() => {

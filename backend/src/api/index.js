@@ -256,7 +256,7 @@ const DriverDashboard = {
   },
   rewards: {
     level: "Gold",
-    points: 70,
+    points: 90,
     nextLevel: "Platinum",
     pointsToNextLevel: 30,
     badges: [
